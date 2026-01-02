@@ -16,27 +16,16 @@ public class PlayerHUD : MonoBehaviour
 
     void Awake()
     {
-        // Singleton, damit der PlayerManager uns einfach findet
         if (Instance != null && Instance != this) Destroy(gameObject);
         else Instance = this;
     }
-
-    void Start()
-    {
-        // Optional: Am Anfang einmal Standardwerte setzen
-        UpdateLevel(1);
-        SetName("Held"); // Oder den echten Namen laden
-    }
-
-    // --- Diese Methoden werden von auﬂen aufgerufen ---
 
     public void UpdateHP(float currentHP, float maxHP)
     {
         if (hpBarFill != null)
         {
-            // Verhindert Teilen durch 0
-            if (maxHP <= 0) maxHP = 1;
-            hpBarFill.fillAmount = currentHP / maxHP;
+            float fill = (maxHP > 0) ? currentHP / maxHP : 0;
+            hpBarFill.fillAmount = fill;
         }
     }
 
@@ -44,17 +33,14 @@ public class PlayerHUD : MonoBehaviour
     {
         if (manaBarFill != null)
         {
-            if (maxMana <= 0) maxMana = 1;
-            manaBarFill.fillAmount = currentMana / maxMana;
+            float fill = (maxMana > 0) ? currentMana / maxMana : 0;
+            manaBarFill.fillAmount = fill;
         }
     }
 
     public void UpdateLevel(int level)
     {
-        if (levelText != null)
-        {
-            levelText.text = level.ToString();
-        }
+        if (levelText != null) levelText.text = level.ToString();
     }
 
     public void SetName(string name)

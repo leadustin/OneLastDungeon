@@ -23,7 +23,7 @@ public class PlayerManager : MonoBehaviour
     public int defense;
 
     [Header("Finanzen (in Kupfer)")]
-    public long currentMoney = 0; // Auf long umgestellt für große Beträge
+    public long currentMoney = 0;
 
     [Header("Inventar")]
     public List<InventoryItem> inventory = new List<InventoryItem>();
@@ -58,21 +58,17 @@ public class PlayerManager : MonoBehaviour
         UpdateUI();
     }
 
-    // --- NEU: KAMPF & SCHADEN ---
     public void TakeDamage(int amount)
     {
-        // Berücksichtigt die Verteidigung beim Schaden
         int finalDamage = Mathf.Max(1, amount - defense);
         currentHealth -= finalDamage;
         if (currentHealth < 0) currentHealth = 0;
 
         UpdateUI();
 
-        // Hier könnte später eine Game Over Logik hin
         if (currentHealth <= 0) Debug.Log("Spieler ist besiegt!");
     }
 
-    // --- AUSRÜSTUNG ---
     public void EquipCard(CardData newItem)
     {
         EquipmentType type = EquipmentType.Head;
@@ -102,7 +98,6 @@ public class PlayerManager : MonoBehaviour
         UpdateUI();
     }
 
-    // --- NEU: ABLEGEN (UnequipGear) ---
     public void UnequipGear(CardData item)
     {
         if (item == null) return;
@@ -134,7 +129,6 @@ public class PlayerManager : MonoBehaviour
         currentSlot = newItem;
     }
 
-    // --- FINANZEN & FORMATIERUNG ---
     public void AddMoney(long copperAmount)
     {
         currentMoney += copperAmount;
@@ -155,8 +149,6 @@ public class PlayerManager : MonoBehaviour
     public static string FormatMoney(long totalCopper)
     {
         long gold = totalCopper / 10000;
-
-        // Ab einer Million Gold: 1.x M Anzeige
         if (gold >= 1000000)
         {
             float millionGold = gold / 1000000f;
@@ -177,21 +169,13 @@ public class PlayerManager : MonoBehaviour
 
     public string GetFormattedMoney() => FormatMoney(currentMoney);
 
-    // --- STATS ---
     void CalculateStats()
     {
         attackDamage = baseAttackDamage;
         defense = baseDefense;
-
-        AddStatsFrom(headItem);
-        AddStatsFrom(chestItem);
-        AddStatsFrom(handsItem);
-        AddStatsFrom(legsItem);
-        AddStatsFrom(feetItem);
-        AddStatsFrom(neckItem);
-        AddStatsFrom(ring1Item);
-        AddStatsFrom(ring2Item);
-        AddStatsFrom(weaponItem);
+        AddStatsFrom(headItem); AddStatsFrom(chestItem); AddStatsFrom(handsItem);
+        AddStatsFrom(legsItem); AddStatsFrom(feetItem); AddStatsFrom(neckItem);
+        AddStatsFrom(ring1Item); AddStatsFrom(ring2Item); AddStatsFrom(weaponItem);
         AddStatsFrom(offhandItem);
     }
 
@@ -200,21 +184,13 @@ public class PlayerManager : MonoBehaviour
         if (item == null) return;
         if (item is ArmorData a) defense += a.defenseAmount;
         if (item is WeaponData w) attackDamage += w.damageAmount;
-        if (item is AccessoryData acc)
-        {
-            defense += acc.bonusDefense;
-            attackDamage += acc.bonusDamage;
-        }
+        if (item is AccessoryData acc) { defense += acc.bonusDefense; attackDamage += acc.bonusDamage; }
     }
 
-    // --- INVENTAR ---
     public void AddItemToInventory(CardData item)
     {
         bool found = false;
-        foreach (var stack in inventory)
-        {
-            if (stack.data == item) { stack.stackSize++; found = true; break; }
-        }
+        foreach (var stack in inventory) { if (stack.data == item) { stack.stackSize++; found = true; break; } }
         if (!found) inventory.Add(new InventoryItem(item, 1));
         UpdateUI();
     }
@@ -222,15 +198,7 @@ public class PlayerManager : MonoBehaviour
     public void RemoveItemFromInventory(CardData item)
     {
         InventoryItem toRemove = null;
-        foreach (var stack in inventory)
-        {
-            if (stack.data == item)
-            {
-                stack.stackSize--;
-                if (stack.stackSize <= 0) toRemove = stack;
-                break;
-            }
-        }
+        foreach (var stack in inventory) { if (stack.data == item) { stack.stackSize--; if (stack.stackSize <= 0) toRemove = stack; break; } }
         if (toRemove != null) inventory.Remove(toRemove);
         UpdateUI();
     }
@@ -244,16 +212,25 @@ public class PlayerManager : MonoBehaviour
             else if (potion.potionType == PotionType.Mana) RefillMana(amount);
             RemoveItemFromInventory(item);
         }
-        else if (item is ArmorData || item is WeaponData || item is AccessoryData)
-        {
-            EquipCard(item);
-        }
+        else if (item is ArmorData || item is WeaponData || item is AccessoryData) EquipCard(item);
     }
 
+    // --- HIER WAR DER FEHLER: DIE VERBINDUNG ZUM HUD FEHLTE ---
     public void UpdateUI()
     {
-        if (healthText != null) healthText.text = $"HP: {currentHealth}/{maxHealth}";
+        // 1. Lokale Texte (falls vorhanden)
+        if (healthText != null) healthText.text = $"HP: {(int)currentHealth}/{(int)maxHealth}";
         if (moneyText != null) moneyText.text = GetFormattedMoney();
+
+        // 2. Das HUD Singleton ansprechen
+        if (PlayerHUD.Instance != null)
+        {
+            PlayerHUD.Instance.UpdateHP(currentHealth, maxHealth);
+            PlayerHUD.Instance.UpdateMana(currentMana, maxMana);
+            PlayerHUD.Instance.UpdateLevel(level);
+            PlayerHUD.Instance.SetName(playerName);
+        }
+
         if (InventoryUI.Instance != null) InventoryUI.Instance.RefreshInventory();
 
         CharacterScreenUI charUI = Object.FindFirstObjectByType<CharacterScreenUI>();
