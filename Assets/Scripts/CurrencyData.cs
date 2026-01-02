@@ -13,12 +13,12 @@ public class CurrencyData : CardData
     public int maxSilver;
     public int maxCopper;
 
-    // Hilfsmethoden für den GridManager
-    public int GetMinInCopper() => (minGold * 10000) + (minSilver * 100) + minCopper;
-    public int GetMaxInCopper() => (maxGold * 10000) + (maxSilver * 100) + maxCopper;
+    // Rückgabetyp auf long geändert und Cast hinzugefügt
+    public long GetMinInCopper() => ((long)minGold * 10000) + ((long)minSilver * 100) + minCopper;
+    public long GetMaxInCopper() => ((long)maxGold * 10000) + ((long)maxSilver * 100) + maxCopper;
 
     protected void OnValidate()
     {
-        cardType = CardType.Gold; // Stellt sicher, dass der Typ immer Gold ist
+        cardType = CardType.Gold;
     }
 }

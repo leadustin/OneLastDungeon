@@ -12,8 +12,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b3ab5e27ed14d1043be9216df12317d6, type: 3}
   m_Name: "M\xFCnzbeutel"
   m_EditorClassIdentifier: Assembly-CSharp::CurrencyData
-  cardName: "M\xFCnzbeutel"
-  artwork: {fileID: 0}
+  cardName: "M\xFCnzen"
+  artwork: {fileID: 3732251598787280615, guid: c8250c9f69e338d49806efa638fc9db9, type: 3}
   cardType: 3
   minGold: 0
   minSilver: 0

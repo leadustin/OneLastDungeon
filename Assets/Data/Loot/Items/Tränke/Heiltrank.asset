@@ -12,8 +12,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8902f2903165ea240817fa4a4377e455, type: 3}
   m_Name: Heiltrank
   m_EditorClassIdentifier: Assembly-CSharp::ConsumableData
-  cardName: Heiltrank
-  artwork: {fileID: 21300000, guid: 8a333590aec7dd642b6c73ec3ae0a159, type: 3}
+  cardName: Winziger Heiltrank
+  description: "Ein  Heiltrank der seines Namesn kaum w\xFCrdig ist."
+  artwork: {fileID: 4772353743770825591, guid: bd72ca4636dbab64da7c0c83ab67e427, type: 3}
   cardType: 2
   priceGold: 0
   priceSilver: 0

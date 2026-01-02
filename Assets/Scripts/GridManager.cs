@@ -10,7 +10,7 @@ public class GridManager : MonoBehaviour
 
     [Header("Layout")]
     public float spacingX = 1.6f;
-    public float spacingY = 2.2f;
+    public float spacingY = 1.6f;
     public float gridOffsetY = 1.0f;
     public GameObject cardPrefab;
 
@@ -86,21 +86,28 @@ public class GridManager : MonoBehaviour
         }
         else if (data is CurrencyData moneyDrop)
         {
-            // Nutzt die neuen min/max Kupferberechnungen aus deiner CurrencyData
-            int amount = Random.Range(moneyDrop.GetMinInCopper(), moneyDrop.GetMaxInCopper() + 1);
+            // --- GELD LOGIK (KORRIGIERT FÜR LONG) ---
+            // Wir wandeln long-Werte explizit in int um für Random.Range
+            int minVal = (int)moneyDrop.GetMinInCopper();
+            int maxVal = (int)moneyDrop.GetMaxInCopper();
 
-            amount = Mathf.RoundToInt(amount * currentLevel.goldMultiplier);
+            int baseAmount = Random.Range(minVal, maxVal + 1);
 
-            PlayerManager.Instance.AddMoney(amount);
+            // Expliziter Cast zu long nach der Multiplikation mit dem float Multiplier
+            long finalAmount = (long)(baseAmount * currentLevel.goldMultiplier);
 
-            // Nutzt die statische Formatierung für eine schöne Anzeige ("+1s 50c")
-            string formattedText = PlayerManager.FormatMoney(amount);
-            FloatingTextManager.Instance.Show("+" + formattedText, target.transform.position, Color.yellow);
+            PlayerManager.Instance.AddMoney(finalAmount);
+
+            string formattedText = PlayerManager.FormatMoney(finalAmount);
+            FloatingTextManager.Instance.Show("+" + formattedText, Vector3.zero, Color.yellow, true);
         }
         else
         {
+            // --- ITEM LOGIK ---
             PlayerManager.Instance.AddItemToInventory(data);
-            FloatingTextManager.Instance.Show("ITEM!", target.transform.position, Color.cyan);
+
+            // Wir zeigen das Icon statt Text
+            FloatingTextManager.Instance.ShowIcon(data.artwork, "", target.transform.position, false);
         }
 
         FinishMovement(target);

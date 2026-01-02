@@ -1,0 +1,28 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 802d1994c41139a45ab47108374c88b5, type: 3}
+  m_Name: Goblin-Krieger
+  m_EditorClassIdentifier: Assembly-CSharp::EnemyData
+  cardName: Goblin-Krieger
+  description: 
+  artwork: {fileID: 315227663182954716, guid: 092cbe8a1fc20de4bb91d48cc74ed9be, type: 3}
+  cardType: 4
+  health: 12
+  damage: 4
+  defense: 1
+  minGoldDrop: 5
+  maxGoldDrop: 15
+  potentialDrops:
+  - item: {fileID: 11400000, guid: 803ff969a55e9bf4fa66a0d4131fd593, type: 2}
+    dropChance: 10
+  - item: {fileID: 11400000, guid: 37c6ecb796decc844a2a4ee759aa5ccc, type: 2}
+    dropChance: 2

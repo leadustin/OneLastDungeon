@@ -1,111 +1,142 @@
 using UnityEngine;
 using UnityEngine.UI;
-using TMPro;                // Für den Text (Menge)
-using UnityEngine.EventSystems; // WICHTIG: Für IDropHandler (Empfangen)
+using UnityEngine.EventSystems; // Wichtig für Pointer Events
+using TMPro;
 
-public class InventorySlot : MonoBehaviour, IDropHandler
+public class InventorySlot : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndDragHandler, IPointerDownHandler, IPointerUpHandler
 {
-    [Header("UI Verknüpfung")]
-    public Image contentDisplay;       // Das 'Content_Image' (wo das Icon hinkommt)
-    public TextMeshProUGUI amountText; // Der Text für die Menge (z.B. unten rechts)
+    [Header("UI Referenzen")]
+    public Image contentDisplay;
+    public TextMeshProUGUI amountText;
 
-    [Header("Einstellungen")]
-    public Sprite defaultBackgroundSprite; // Das Bild, wenn der Slot leer ist (dunkler Hintergrund)
+    [Header("Steuerung")]
+    [Tooltip("Dauer in Sekunden für Info-Fenster")]
+    public float longPressDuration = 0.5f;
 
-    private InventoryItem myItem;      // Die Daten des aktuellen Items (inkl. Anzahl)
+    // Interne Daten
+    private InventoryItem myItem;
+    private Canvas parentCanvas;
+    private CanvasGroup canvasGroup;
+    private GameObject dragObject;
 
-    // --- SETUP: SLOT FÜLLEN ---
-    public void SetupSlot(InventoryItem item)
+    // Timer Variablen
+    private bool isPressed = false;
+    private float pressTimer = 0f;
+    private bool longPressTriggered = false;
+
+    void Awake()
     {
-        myItem = item;
+        canvasGroup = GetComponent<CanvasGroup>();
+        if (canvasGroup == null) canvasGroup = gameObject.AddComponent<CanvasGroup>();
+        parentCanvas = GetComponentInParent<Canvas>();
+    }
 
-        if (myItem != null && myItem.data != null)
+    // --- LOGIK FÜR LONG PRESS (UPDATE) ---
+    void Update()
+    {
+        if (isPressed && !longPressTriggered)
         {
-            // 1. Bild setzen
-            if (myItem.data.artwork != null)
-            {
-                contentDisplay.sprite = myItem.data.artwork;
-                contentDisplay.color = Color.white;
-            }
+            pressTimer += Time.deltaTime;
 
-            // 2. Zahl anzeigen (nur wenn Stapel > 1)
-            if (amountText != null)
+            if (pressTimer >= longPressDuration)
             {
-                if (myItem.stackSize > 1)
+                // Zeit abgelaufen -> Info Fenster öffnen!
+                longPressTriggered = true;
+                if (myItem != null && myItem.data != null)
                 {
-                    amountText.text = myItem.stackSize.ToString();
-                    amountText.gameObject.SetActive(true);
-                }
-                else
-                {
-                    // Bei 1 zeigen wir keine Zahl (sieht sauberer aus)
-                    amountText.gameObject.SetActive(false);
+                    if (ItemInfoUI.Instance != null)
+                        ItemInfoUI.Instance.OpenInfo(myItem.data);
                 }
             }
-        }
-        else
-        {
-            ClearSlot();
         }
     }
 
-    // --- CLEAR: SLOT LEEREN ---
-    public void ClearSlot()
+    // --- INPUT EVENTS (FINGER DRAUF/WEG) ---
+
+    public void OnPointerDown(PointerEventData eventData)
     {
-        myItem = null;
-
-        // Zurücksetzen auf Hintergrundbild oder Transparent
-        if (defaultBackgroundSprite != null)
-        {
-            contentDisplay.sprite = defaultBackgroundSprite;
-            contentDisplay.color = Color.white;
-        }
-        else
-        {
-            contentDisplay.sprite = null;
-            contentDisplay.color = new Color(0, 0, 0, 0); // Komplett unsichtbar
-        }
-
-        // Zahl ausblenden
-        if (amountText != null) amountText.gameObject.SetActive(false);
+        isPressed = true;
+        pressTimer = 0f;
+        longPressTriggered = false;
     }
 
-    // --- KLICK LOGIK ---
-    public void OnClick()
+    public void OnPointerUp(PointerEventData eventData)
     {
-        if (myItem != null)
+        isPressed = false;
+
+        // Wenn wir NICHT lange gedrückt haben und NICHT gezogen haben -> Ausrüsten
+        if (!longPressTriggered && !eventData.dragging)
         {
-            // Versuchen, das Item zu benutzen
-            if (PlayerManager.Instance != null)
+            if (myItem != null && myItem.data != null)
             {
                 PlayerManager.Instance.UseItem(myItem.data);
             }
         }
     }
 
-    // --- DROP LOGIK (Wenn man etwas AUF diesen Slot fallen lässt) ---
-    public void OnDrop(PointerEventData eventData)
+    // --- STANDARD SLOT LOGIK (Setup & Drag) ---
+
+    public void SetupSlot(InventoryItem item)
     {
-        // 1. Wer wurde fallen gelassen? (Das Drag-Objekt)
-        GameObject droppedObj = eventData.pointerDrag;
-        if (droppedObj == null) return;
-
-        // 2. War es ein Ausrüstungs-Slot? (Wir wollen Ausrüstung hier ablegen)
-        EquipmentSlot equipSlot = droppedObj.GetComponent<EquipmentSlot>();
-
-        if (equipSlot != null)
+        myItem = item;
+        if (myItem != null && myItem.data != null)
         {
-            Debug.Log("Ausrüstung auf Inventar-Slot abgelegt -> Ausziehen!");
-            equipSlot.Unequip();
-        }
+            contentDisplay.sprite = myItem.data.artwork;
+            contentDisplay.preserveAspect = true; // Verhindert Verzerrung
+            contentDisplay.color = Color.white;
+            contentDisplay.enabled = true;
 
-        // (Hier könnte man später auch Logik einfügen, um Items innerhalb des Inventars zu tauschen)
+            if (amountText != null)
+            {
+                amountText.text = myItem.stackSize > 1 ? myItem.stackSize.ToString() : "";
+            }
+        }
     }
 
-    // --- HELPER METHODE ---
-    // Wird vom EquipmentSlot gebraucht, wenn wir ein Item AUS dem Inventar in die Ausrüstung ziehen
-    public InventoryItem GetItem()
+    public void ClearSlot()
     {
-        return myItem;
+        myItem = null;
+        contentDisplay.sprite = null;
+        contentDisplay.enabled = false;
+        if (amountText != null) amountText.text = "";
+    }
+
+    public InventoryItem GetItem() { return myItem; }
+
+    // --- DRAG AND DROP ---
+
+    public void OnBeginDrag(PointerEventData eventData)
+    {
+        if (myItem == null) return;
+
+        // Timer abbrechen beim Ziehen
+        isPressed = false;
+
+        // Fake Icon erstellen
+        dragObject = new GameObject("DragIcon");
+        dragObject.transform.SetParent(parentCanvas.transform);
+        dragObject.transform.SetAsLastSibling();
+
+        Image img = dragObject.AddComponent<Image>();
+        img.sprite = contentDisplay.sprite;
+        img.raycastTarget = false;
+
+        RectTransform rt = dragObject.GetComponent<RectTransform>();
+        rt.sizeDelta = new Vector2(80, 80);
+
+        contentDisplay.color = new Color(1, 1, 1, 0.5f);
+        canvasGroup.blocksRaycasts = false;
+    }
+
+    public void OnDrag(PointerEventData eventData)
+    {
+        if (dragObject != null) dragObject.transform.position = Input.mousePosition;
+    }
+
+    public void OnEndDrag(PointerEventData eventData)
+    {
+        if (dragObject != null) Destroy(dragObject);
+        canvasGroup.blocksRaycasts = true;
+        if (myItem != null) contentDisplay.color = Color.white;
     }
 }

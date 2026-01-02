@@ -13,9 +13,11 @@ MonoBehaviour:
   m_Name: RostigesKurzschwert
   m_EditorClassIdentifier: Assembly-CSharp::WeaponData
   cardName: Rostiges Kurzschwert
-  artwork: {fileID: 21300000, guid: 719c2201c2f5f6c4aafffaeb5abdf5f9, type: 3}
+  description: Ein rostiges Schwert ohne besonderen Schaden
+  artwork: {fileID: -1198454320311150811, guid: f30707cd7d2279549873d7ec38fd68fe, type: 3}
   cardType: 0
   priceGold: 0
   priceSilver: 1
   priceCopper: 0
-  damageAmount: 100
+  equipmentType: 7
+  damageAmount: 50

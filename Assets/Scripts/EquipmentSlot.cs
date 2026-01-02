@@ -2,33 +2,63 @@ using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
-public class EquipmentSlot : MonoBehaviour, IDropHandler, IBeginDragHandler, IDragHandler, IEndDragHandler
+// WICHTIG: Wir haben IBeginDragHandler, IDragHandler und IEndDragHandler hinzugefügt
+public class EquipmentSlot : MonoBehaviour, IDropHandler, IPointerClickHandler, IBeginDragHandler, IDragHandler, IEndDragHandler
 {
-    [Header("Einstellungen")]
-    public CardType allowedType;
+    [Header("Welcher Slot ist das?")]
+    public EquipmentType allowedType;
+
+    [Header("UI Referenzen")]
     public Image iconDisplay;
     public Sprite defaultIcon;
 
     private CardData currentItem;
-    private Canvas mainCanvas;
 
-    private Transform originalParent;
-    private RectTransform iconRect;
-    private Vector3 originalScale;
+    // Variablen für das Ziehen (Drag & Drop)
+    private GameObject dragObject;
+    private Canvas mainCanvas;
+    private CanvasGroup canvasGroup;
 
     void Awake()
     {
-        mainCanvas = GetComponentInParent<Canvas>();
+        // Wir brauchen eine CanvasGroup, damit die Maus "durchklicken" kann beim Ziehen
+        canvasGroup = GetComponent<CanvasGroup>();
+        if (canvasGroup == null) canvasGroup = gameObject.AddComponent<CanvasGroup>();
 
-        if (iconDisplay != null)
+        Canvas foundCanvas = GetComponentInParent<Canvas>();
+        if (foundCanvas != null) mainCanvas = foundCanvas.rootCanvas;
+    }
+
+    // --- VISUALS UPDATE ---
+    public void UpdateSlotUI(CardData item)
+    {
+        currentItem = item;
+
+        if (currentItem != null)
         {
-            iconRect = iconDisplay.GetComponent<RectTransform>();
-            originalParent = iconDisplay.transform.parent;
-            originalScale = iconDisplay.transform.localScale;
+            iconDisplay.sprite = currentItem.artwork;
+            iconDisplay.preserveAspect = true;
+            iconDisplay.color = Color.white;
+            iconDisplay.enabled = true;
+        }
+        else
+        {
+            if (defaultIcon != null)
+            {
+                iconDisplay.sprite = defaultIcon;
+                iconDisplay.color = new Color(1, 1, 1, 0.2f);
+                iconDisplay.enabled = true;
+            }
+            else
+            {
+                iconDisplay.sprite = null;
+                iconDisplay.color = Color.clear;
+                iconDisplay.enabled = false;
+            }
         }
     }
 
-    // --- 1. EMPFANGEN (Hier lag der Fehler) ---
+    // --- DROP LOGIK (Item kommt HIER an -> Anziehen) ---
     public void OnDrop(PointerEventData eventData)
     {
         GameObject droppedObj = eventData.pointerDrag;
@@ -38,100 +68,90 @@ public class EquipmentSlot : MonoBehaviour, IDropHandler, IBeginDragHandler, IDr
         if (invSlot != null)
         {
             InventoryItem itemStack = invSlot.GetItem();
-
-            // WICHTIG: Wir prüfen nur den cardType. 
-            // Da PurchasableCardData von CardData erbt, ist itemStack.data immer noch ein CardData!
-            if (itemStack != null && itemStack.data != null && itemStack.data.cardType == allowedType)
+            if (itemStack != null && itemStack.data != null)
             {
-                EquipItem(itemStack.data);
-            }
-            else
-            {
-                Debug.Log($"Falscher Typ! Slot erwartet: {allowedType}, Item ist: {itemStack?.data?.cardType}");
+                if (CheckItemType(itemStack.data))
+                {
+                    PlayerManager.Instance.EquipCard(itemStack.data);
+                }
             }
         }
     }
 
-    public void EquipItem(CardData item)
-    {
-        CardData previousItem = currentItem;
-        currentItem = item;
-
-        if (PlayerManager.Instance != null)
-        {
-            // PlayerManager verarbeitet CardData, also egal ob Waffe oder Rüstung
-            PlayerManager.Instance.EquipGear(currentItem, previousItem);
-        }
-        UpdateDisplay();
-    }
-
-    public void Unequip()
-    {
-        if (currentItem == null) return;
-
-        if (PlayerManager.Instance != null)
-        {
-            PlayerManager.Instance.UnequipGear(currentItem);
-        }
-
-        currentItem = null;
-        UpdateDisplay();
-    }
-
+    // --- DRAG START (Wir ziehen das Item HIER RAUS) ---
     public void OnBeginDrag(PointerEventData eventData)
     {
-        if (currentItem == null) return;
+        if (currentItem == null) return; // Leeren Slot kann man nicht ziehen
 
-        originalParent = transform;
+        // 1. Visuellen Klon erstellen
+        dragObject = new GameObject("EquipDragIcon");
+        dragObject.transform.SetParent(mainCanvas.transform);
+        dragObject.transform.SetAsLastSibling();
 
-        // Bild an den Canvas hängen für freies Draggen
-        iconDisplay.transform.SetParent(mainCanvas.transform);
-        iconDisplay.transform.SetAsLastSibling();
-        iconDisplay.raycastTarget = false;
+        Image img = dragObject.AddComponent<Image>();
+        img.sprite = iconDisplay.sprite;
+        img.raycastTarget = false;
+
+        RectTransform rt = dragObject.GetComponent<RectTransform>();
+        rt.sizeDelta = new Vector2(80, 80); // Feste Größe beim Ziehen
+
+        // 2. Original unsichtbar machen (optional, sieht oft besser aus)
+        iconDisplay.color = new Color(1, 1, 1, 0.5f); // Halbtransparent
+
+        // 3. WICHTIG: Raycasts blockieren ausschalten, damit wir den DropZone treffen
+        canvasGroup.blocksRaycasts = false;
     }
 
+    // --- DRAG UPDATE ---
     public void OnDrag(PointerEventData eventData)
     {
-        if (currentItem != null && iconDisplay != null)
-        {
-            iconDisplay.transform.position = Input.mousePosition;
-        }
+        if (dragObject != null)
+            dragObject.transform.position = Input.mousePosition;
     }
 
+    // --- DRAG ENDE ---
     public void OnEndDrag(PointerEventData eventData)
     {
-        if (iconDisplay != null)
-        {
-            iconDisplay.transform.SetParent(originalParent);
-            iconRect.anchoredPosition = Vector2.zero;
-            iconDisplay.transform.localScale = Vector3.one;
-            iconDisplay.raycastTarget = false;
-        }
-        UpdateDisplay();
+        // Aufräumen
+        if (dragObject != null) Destroy(dragObject);
+
+        // Original wieder normal machen
+        canvasGroup.blocksRaycasts = true;
+        if (currentItem != null) iconDisplay.color = Color.white;
+
+        // Hinweis: Wenn wir über der DropZone losgelassen haben, 
+        // hat die DropZone schon "Unequip" aufgerufen.
     }
 
-    void UpdateDisplay()
+    // --- UNEQUIP LOGIK ---
+    public void Unequip()
     {
         if (currentItem != null)
         {
-            iconDisplay.sprite = currentItem.artwork;
-            iconDisplay.color = Color.white;
-            iconDisplay.gameObject.SetActive(true);
-            iconDisplay.transform.localScale = Vector3.one;
+            PlayerManager.Instance.UnequipGear(currentItem);
         }
-        else
+    }
+
+    private bool CheckItemType(CardData item)
+    {
+        if (item is ArmorData armor) return armor.equipmentType == allowedType;
+        if (item is WeaponData weapon) return weapon.equipmentType == allowedType;
+        if (item is AccessoryData acc) return acc.equipmentType == allowedType;
+        return false;
+    }
+
+    // Rechtsklick zum Ausziehen (als Alternative)
+    public void OnPointerClick(PointerEventData eventData)
+    {
+        // Option A: PC Rechtsklick
+        if (eventData.button == PointerEventData.InputButton.Right)
         {
-            if (defaultIcon != null)
-            {
-                iconDisplay.sprite = defaultIcon;
-                iconDisplay.color = new Color(1, 1, 1, 0.5f);
-            }
-            else
-            {
-                iconDisplay.sprite = null;
-                iconDisplay.color = new Color(0, 0, 0, 0);
-            }
-            iconDisplay.transform.localScale = Vector3.one;
+            Unequip();
+        }
+        // Option B: Handy/Tablet Doppeltippen (ClickCount zählt das automatisch)
+        else if (eventData.clickCount >= 2)
+        {
+            Unequip();
         }
     }
 }

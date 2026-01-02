@@ -1,13 +1,18 @@
 using UnityEngine;
 
 [CreateAssetMenu(fileName = "NewRing", menuName = "Dungeon/Items/Ring")]
-public class AccessoryData : PurchasableCardData // Erbt jetzt von PurchasableCardData
+public class AccessoryData : PurchasableCardData
 {
-    [Header("Ring Boni")]
+    [Header("Art des Schmucks")]
+    public EquipmentType equipmentType;
+
+    [Header("Boni")]
     public int bonusHealth = 0;
     public int bonusDamage = 0;
     public int bonusDefense = 0;
-    [TextArea] public string effectDescription = "Magischer Effekt...";
+
+    // HIER GELÖSCHT: public string effectDescription...
+    // Nutze stattdessen das geerbte "description" Feld im Inspector.
 
     protected void OnValidate()
     {

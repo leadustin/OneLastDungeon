@@ -1,50 +1,48 @@
 using UnityEngine;
-using UnityEngine.UI; // Wichtig für UI Elemente
 
 public class UIManager : MonoBehaviour
 {
     public static UIManager Instance;
 
-    [Header("Fenster")]
-    public GameObject characterPanel; // Ziehe hier dein 'Panel_CharacterScreen' rein
+    [Header("Fenster Referenzen")]
+    public GameObject characterPanel;
+    public GameObject inventoryPanel;
 
     void Awake()
     {
-        // Singleton Pattern (damit wir von überall darauf zugreifen können)
+        // Singleton Pattern (Standard)
         if (Instance != null && Instance != this) Destroy(gameObject);
         else Instance = this;
     }
 
     void Start()
     {
-        // Sicherstellen, dass das Inventar beim Spielstart ZU ist
+        // Beim Start sicherstellen, dass beide Fenster zu sind
+        if (characterPanel != null) characterPanel.SetActive(false);
+        if (inventoryPanel != null) inventoryPanel.SetActive(false);
+    }
+
+    // --- CHARAKTER FENSTER ---
+    // Diese Funktion kommt auf den HUD-Button UND auf das "X" im Charakter-Fenster
+    public void ToggleCharacterScreen()
+    {
         if (characterPanel != null)
-            characterPanel.SetActive(false);
-    }
-
-    // Diese Methode rufen wir mit dem Rucksack-Button auf
-    public void OpenCharacterScreen()
-    {
-        characterPanel.SetActive(true);
-
-        // --- DIESE ZEILEN SIND ENTSCHEIDEND! ---
-        if (InventoryUI.Instance != null)
         {
-            Debug.Log("UIManager: Rufe RefreshInventory auf..."); // Zum Testen
-            InventoryUI.Instance.RefreshInventory();
-        }
-        else
-        {
-            Debug.LogError("UIManager: InventoryUI Instance nicht gefunden!");
+            // Kehrt den Zustand um: Wenn AN -> AUS. Wenn AUS -> AN.
+            bool isActive = characterPanel.activeSelf;
+            characterPanel.SetActive(!isActive);
         }
     }
 
-    // Diese Methode rufen wir mit dem X-Button auf
-    public void CloseCharacterScreen()
+    // --- INVENTAR FENSTER ---
+    // Diese Funktion kommt auf den Rucksack-Button UND auf das "X" im Inventar
+    public void ToggleInventory()
     {
-        characterPanel.SetActive(false);
-
-        // Optional: Spiel weiterlaufen lassen
-        // Time.timeScale = 1f;
+        if (inventoryPanel != null)
+        {
+            // Kehrt den Zustand um: Wenn AN -> AUS. Wenn AUS -> AN.
+            bool isActive = inventoryPanel.activeSelf;
+            inventoryPanel.SetActive(!isActive);
+        }
     }
 }
