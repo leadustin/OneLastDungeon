@@ -13,11 +13,15 @@ MonoBehaviour:
   m_Name: Goblin
   m_EditorClassIdentifier: Assembly-CSharp::EnemyData
   cardName: Goblin
-  artwork: {fileID: 0}
-  cardType: 0
+  description: 
+  artwork: {fileID: -430251565816325631, guid: 4c992cd21d9682d41937afc839e4cd94, type: 3}
+  cardType: 4
+  itemBonuses: []
   health: 8
   damage: 2
   defense: 0
+  minGoldDrop: 5
+  maxGoldDrop: 15
   potentialDrops:
-  - item: {fileID: 11400000, guid: 803ff969a55e9bf4fa66a0d4131fd593, type: 2}
-    dropChance: 20
+  - item: {fileID: 11400000, guid: 50bbe1cf8b596584aa86d36307731a66, type: 2}
+    dropChance: 25

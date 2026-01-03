@@ -6,6 +6,9 @@ public class PlayerManager : MonoBehaviour
 {
     public static PlayerManager Instance;
 
+    [Header("UI Haupt-Panel (Kombi)")]
+    public GameObject mainUIPanel;
+
     [Header("Spieler Werte")]
     public string playerName = "Held";
     public float maxHealth = 100;
@@ -18,29 +21,18 @@ public class PlayerManager : MonoBehaviour
     public int baseAttackDamage = 10;
     public int baseDefense = 2;
 
-    [Header("Finale Werte (Für Item-Vergleich)")]
+    [Header("Finale Werte")]
     public int attackDamage;
     public int defense;
 
-    [Header("Finanzen (in Kupfer)")]
+    [Header("Finanzen")]
     public long currentMoney = 0;
 
-    [Header("Inventar")]
+    [Header("Inventar & Ausrüstung")]
     public List<InventoryItem> inventory = new List<InventoryItem>();
+    public CardData headItem, chestItem, handsItem, legsItem, feetItem, neckItem, ring1Item, ring2Item, weaponItem, offhandItem;
 
-    [Header("Ausrüstung (Aktuell getragen)")]
-    public CardData headItem;
-    public CardData chestItem;
-    public CardData handsItem;
-    public CardData legsItem;
-    public CardData feetItem;
-    public CardData neckItem;
-    public CardData ring1Item;
-    public CardData ring2Item;
-    public CardData weaponItem;
-    public CardData offhandItem;
-
-    [Header("UI Referenzen")]
+    [Header("UI Referenzen (Optional)")]
     public TextMeshProUGUI healthText;
     public TextMeshProUGUI moneyText;
 
@@ -54,25 +46,53 @@ public class PlayerManager : MonoBehaviour
     {
         currentHealth = maxHealth;
         currentMana = maxMana;
+
+        if (mainUIPanel != null) mainUIPanel.SetActive(false);
+
         CalculateStats();
         UpdateUI();
     }
 
+    public void ToggleMainUI()
+    {
+        if (mainUIPanel != null)
+        {
+            bool isActive = !mainUIPanel.activeSelf;
+            mainUIPanel.SetActive(isActive);
+            if (isActive) UpdateUI();
+        }
+    }
+
+    // --- LOGIK ---
     public void TakeDamage(int amount)
     {
         int finalDamage = Mathf.Max(1, amount - defense);
         currentHealth -= finalDamage;
         if (currentHealth < 0) currentHealth = 0;
-
         UpdateUI();
-
-        if (currentHealth <= 0) Debug.Log("Spieler ist besiegt!");
     }
 
+    public void AddMoney(long amount)
+    {
+        currentMoney += amount;
+        UpdateUI();
+    }
+
+    public bool TrySpendMoney(long amount)
+    {
+        if (currentMoney >= amount)
+        {
+            currentMoney -= amount;
+            UpdateUI();
+            return true;
+        }
+        return false;
+    }
+
+    // --- AUSRÜSTUNG ---
     public void EquipCard(CardData newItem)
     {
         EquipmentType type = EquipmentType.Head;
-
         if (newItem is ArmorData armor) type = armor.equipmentType;
         else if (newItem is WeaponData weapon) type = weapon.equipmentType;
         else if (newItem is AccessoryData acc) type = acc.equipmentType;
@@ -93,7 +113,6 @@ public class PlayerManager : MonoBehaviour
                 else SwapItem(ref ring1Item, newItem);
                 break;
         }
-
         CalculateStats();
         UpdateUI();
     }
@@ -101,25 +120,20 @@ public class PlayerManager : MonoBehaviour
     public void UnequipGear(CardData item)
     {
         if (item == null) return;
+        if (headItem == item) headItem = null;
+        else if (chestItem == item) chestItem = null;
+        else if (handsItem == item) handsItem = null;
+        else if (legsItem == item) legsItem = null;
+        else if (feetItem == item) feetItem = null;
+        else if (neckItem == item) neckItem = null;
+        else if (ring1Item == item) ring1Item = null;
+        else if (ring2Item == item) ring2Item = null;
+        else if (weaponItem == item) weaponItem = null;
+        else if (offhandItem == item) offhandItem = null;
 
-        bool removed = false;
-        if (headItem == item) { headItem = null; removed = true; }
-        else if (chestItem == item) { chestItem = null; removed = true; }
-        else if (handsItem == item) { handsItem = null; removed = true; }
-        else if (legsItem == item) { legsItem = null; removed = true; }
-        else if (feetItem == item) { feetItem = null; removed = true; }
-        else if (neckItem == item) { neckItem = null; removed = true; }
-        else if (ring1Item == item) { ring1Item = null; removed = true; }
-        else if (ring2Item == item) { ring2Item = null; removed = true; }
-        else if (weaponItem == item) { weaponItem = null; removed = true; }
-        else if (offhandItem == item) { offhandItem = null; removed = true; }
-
-        if (removed)
-        {
-            AddItemToInventory(item);
-            CalculateStats();
-            UpdateUI();
-        }
+        AddItemToInventory(item);
+        CalculateStats();
+        UpdateUI();
     }
 
     void SwapItem(ref CardData currentSlot, CardData newItem)
@@ -129,50 +143,12 @@ public class PlayerManager : MonoBehaviour
         currentSlot = newItem;
     }
 
-    public void AddMoney(long copperAmount)
-    {
-        currentMoney += copperAmount;
-        UpdateUI();
-    }
-
-    public bool TrySpendMoney(long copperAmount)
-    {
-        if (currentMoney >= copperAmount)
-        {
-            currentMoney -= copperAmount;
-            UpdateUI();
-            return true;
-        }
-        return false;
-    }
-
-    public static string FormatMoney(long totalCopper)
-    {
-        long gold = totalCopper / 10000;
-        if (gold >= 1000000)
-        {
-            float millionGold = gold / 1000000f;
-            return millionGold.ToString("F1") + "M <sprite name=\"coins_2\">";
-        }
-
-        int silver = (int)((totalCopper % 10000) / 100);
-        int copper = (int)(totalCopper % 100);
-
-        string result = "";
-        if (gold > 0) result += $"{gold}<sprite name=\"coins_2\"> ";
-        if (silver > 0) result += $"{silver}<sprite name=\"coins_1\"> ";
-        if (copper > 0 || (gold == 0 && silver == 0))
-            result += $"{copper}<sprite name=\"coins_0\">";
-
-        return result.Trim();
-    }
-
-    public string GetFormattedMoney() => FormatMoney(currentMoney);
-
+    // --- STATS BERECHNUNG ---
     void CalculateStats()
     {
         attackDamage = baseAttackDamage;
         defense = baseDefense;
+
         AddStatsFrom(headItem); AddStatsFrom(chestItem); AddStatsFrom(handsItem);
         AddStatsFrom(legsItem); AddStatsFrom(feetItem); AddStatsFrom(neckItem);
         AddStatsFrom(ring1Item); AddStatsFrom(ring2Item); AddStatsFrom(weaponItem);
@@ -184,8 +160,14 @@ public class PlayerManager : MonoBehaviour
         if (item == null) return;
         if (item is ArmorData a) defense += a.defenseAmount;
         if (item is WeaponData w) attackDamage += w.damageAmount;
-        if (item is AccessoryData acc) { defense += acc.bonusDefense; attackDamage += acc.bonusDamage; }
+        if (item is AccessoryData acc)
+        {
+            defense += acc.bonusDefense;
+            attackDamage += acc.bonusDamage;
+        }
     }
+
+    // --- INVENTAR VERWALTUNG ---
 
     public void AddItemToInventory(CardData item)
     {
@@ -215,14 +197,36 @@ public class PlayerManager : MonoBehaviour
         else if (item is ArmorData || item is WeaponData || item is AccessoryData) EquipCard(item);
     }
 
-    // --- HIER WAR DER FEHLER: DIE VERBINDUNG ZUM HUD FEHLTE ---
+    // --- HELPER & FORMATTING ---
+
+    // HIER WAR DER FEHLER: Jetzt wieder mit Sprites!
+    public static string FormatMoney(long totalCopper)
+    {
+        long gold = totalCopper / 10000;
+        // Bei sehr großen Beträgen abkürzen (z.B. 1.5M Gold)
+        if (gold >= 1000000) return (gold / 1000000f).ToString("F1") + "M <sprite name=\"coins_2\">";
+
+        int silver = (int)((totalCopper % 10000) / 100);
+        int copper = (int)(totalCopper % 100);
+
+        string result = "";
+
+        // Nur anzeigen, was auch da ist (außer bei 0, da zeigen wir Kupfer)
+        if (gold > 0) result += $"{gold}<sprite name=\"coins_2\"> ";
+        if (silver > 0) result += $"{silver}<sprite name=\"coins_1\"> ";
+        if (copper > 0 || (gold == 0 && silver == 0)) result += $"{copper}<sprite name=\"coins_0\">";
+
+        return result.Trim();
+    }
+
+    public string GetFormattedMoney() => FormatMoney(currentMoney);
+    public void Heal(int amount) { currentHealth = Mathf.Min(currentHealth + amount, maxHealth); UpdateUI(); }
+    public void RefillMana(int amount) { currentMana = Mathf.Min(currentMana + amount, maxMana); UpdateUI(); }
+
+
+    // --- UI UPDATES ---
     public void UpdateUI()
     {
-        // 1. Lokale Texte (falls vorhanden)
-        if (healthText != null) healthText.text = $"HP: {(int)currentHealth}/{(int)maxHealth}";
-        if (moneyText != null) moneyText.text = GetFormattedMoney();
-
-        // 2. Das HUD Singleton ansprechen
         if (PlayerHUD.Instance != null)
         {
             PlayerHUD.Instance.UpdateHP(currentHealth, maxHealth);
@@ -231,12 +235,42 @@ public class PlayerManager : MonoBehaviour
             PlayerHUD.Instance.SetName(playerName);
         }
 
-        if (InventoryUI.Instance != null) InventoryUI.Instance.RefreshInventory();
+        if (mainUIPanel != null && mainUIPanel.activeInHierarchy)
+        {
+            if (healthText != null) healthText.text = $"HP: {(int)currentHealth}/{(int)maxHealth}";
+            if (moneyText != null) moneyText.text = GetFormattedMoney();
 
-        CharacterScreenUI charUI = Object.FindFirstObjectByType<CharacterScreenUI>();
-        if (charUI != null && charUI.gameObject.activeSelf) charUI.UpdateVisuals();
+            if (InventoryUI.Instance != null) InventoryUI.Instance.RefreshInventory();
+
+            CharacterScreenUI charUI = mainUIPanel.GetComponentInChildren<CharacterScreenUI>(true);
+            if (charUI != null) charUI.UpdateVisuals();
+        }
     }
 
-    public void Heal(int amount) { currentHealth = Mathf.Min(currentHealth + amount, maxHealth); UpdateUI(); }
-    public void RefillMana(int amount) { currentMana = Mathf.Min(currentMana + amount, maxMana); UpdateUI(); }
+    public CardData GetEquippedItem(EquipmentType type)
+    {
+        switch (type)
+        {
+            case EquipmentType.Head: return headItem;
+            case EquipmentType.Chest: return chestItem;
+            case EquipmentType.Hands: return handsItem;
+            case EquipmentType.Legs: return legsItem;
+            case EquipmentType.Feet: return feetItem;
+            case EquipmentType.Neck: return neckItem;
+            case EquipmentType.Weapon: return weaponItem;
+            case EquipmentType.Offhand: return offhandItem;
+            case EquipmentType.Ring: return ring1Item;
+            default: return null;
+        }
+    }
+
+    public void RequestEquipItem(CardData item)
+    {
+        if (item is ConsumableData) UseItem(item);
+        else
+        {
+            if (ItemComparisonUI.Instance != null) ItemComparisonUI.Instance.OpenComparison(item);
+            else EquipCard(item);
+        }
+    }
 }

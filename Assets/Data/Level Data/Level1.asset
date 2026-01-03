@@ -19,11 +19,11 @@ MonoBehaviour:
   - card: {fileID: 11400000, guid: 5782c2140da691e4ca8711b84305739d, type: 2}
     weight: 30
   - card: {fileID: 11400000, guid: 477b2d1ebe79b974b828c8746bd7840f, type: 2}
-    weight: 40
+    weight: 30
   items:
   - card: {fileID: 11400000, guid: 803ff969a55e9bf4fa66a0d4131fd593, type: 2}
     weight: 10
   - card: {fileID: 11400000, guid: 37c6ecb796decc844a2a4ee759aa5ccc, type: 2}
-    weight: 40
-  - card: {fileID: 11400000, guid: b989834e135df1f43b8da7b1cf831320, type: 2}
     weight: 20
+  - card: {fileID: 11400000, guid: b989834e135df1f43b8da7b1cf831320, type: 2}
+    weight: 10
