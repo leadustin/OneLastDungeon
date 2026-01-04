@@ -49,9 +49,11 @@ public enum StatType
 }
 
 // Die Struktur für einen einzelnen Bonus auf einem Item
+// HIER IST JETZT DIE ZENTRALE DEFINITION
 [System.Serializable]
 public struct ItemBonus
 {
-    public StatType statType; // Welcher Wert (z.B. CritChance)
-    public float amount;      // Wie viel (z.B. 10.5)
+    public StatType statType;
+    public int amount;        // Geändert auf int, passend zu unserem Damage-System
+    public bool isPercentage; // <--- NEU: Die Checkbox für %
 }

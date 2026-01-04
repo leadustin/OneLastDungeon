@@ -1,6 +1,6 @@
 using UnityEngine;
 
-[CreateAssetMenu(fileName = "NewMaterial", menuName = "Dungeon/Items/Material")]
+[CreateAssetMenu(fileName = "NewMaterial", menuName = "Game Data/Items/Material")]
 public class MaterialData : CardData
 {
     // HIER GELÖSCHT: public string description... 

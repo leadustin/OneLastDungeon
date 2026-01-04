@@ -1,5 +1,5 @@
 using UnityEngine;
-using System.Collections.Generic; // <--- WICHTIG: Hinzugefügt für List<>
+using System.Collections.Generic;
 
 public enum CardType
 {
@@ -18,13 +18,14 @@ public abstract class CardData : ScriptableObject
     public string cardName;
 
     [TextArea]
-    public string description; // Dein Lore-Text
+    public string description;
 
     public Sprite artwork;
     public CardType cardType;
 
-    // --- NEU: Die Liste für die Boni ---
-    [Header("Zusätzliche Boni (Affixe)")]
+    [Header("Einzel-Item Boni")]
     public List<ItemBonus> itemBonuses;
-    // ----------------------------------
+
+    [Header("Set Zugehörigkeit")]
+    public ItemSetData itemSet;
 }

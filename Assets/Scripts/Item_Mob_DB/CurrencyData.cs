@@ -1,6 +1,6 @@
 using UnityEngine;
 
-[CreateAssetMenu(fileName = "New Currency Drop", menuName = "Card System/Currency")]
+[CreateAssetMenu(fileName = "NewCurrency", menuName = "Game Data/Items/Currency")]
 public class CurrencyData : CardData
 {
     [Header("Minimaler Drop")]
@@ -13,7 +13,6 @@ public class CurrencyData : CardData
     public int maxSilver;
     public int maxCopper;
 
-    // Rückgabetyp auf long geändert und Cast hinzugefügt
     public long GetMinInCopper() => ((long)minGold * 10000) + ((long)minSilver * 100) + minCopper;
     public long GetMaxInCopper() => ((long)maxGold * 10000) + ((long)maxSilver * 100) + maxCopper;
 

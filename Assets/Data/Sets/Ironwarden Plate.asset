@@ -1,0 +1,47 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 83b743bf0a6c394448a2030d809efbfd, type: 3}
+  m_Name: Ironwarden Plate
+  m_EditorClassIdentifier: Assembly-CSharp::ItemSetData
+  setName: Ironwarden Plate
+  itemsInSet:
+  - {fileID: 11400000, guid: e7c8028f01a58474b9a0b0336fbad49c, type: 2}
+  - {fileID: 11400000, guid: 4db5046225221d448acbca7f4f23368b, type: 2}
+  - {fileID: 11400000, guid: 2aa0491df26be2e489be4ac8c8a69958, type: 2}
+  - {fileID: 11400000, guid: 614f808d4aa1e7346813ae4e56a5acc8, type: 2}
+  - {fileID: 11400000, guid: d6a4422b9dbac8e4c82f8fcbc796a3a6, type: 2}
+  setBonuses:
+  - itemsRequired: 1
+    bonuses:
+    - statType: 14
+      amount: 2
+      isPercentage: 1
+  - itemsRequired: 2
+    bonuses:
+    - statType: 15
+      amount: 2
+      isPercentage: 1
+  - itemsRequired: 3
+    bonuses:
+    - statType: 7
+      amount: 5
+      isPercentage: 0
+  - itemsRequired: 4
+    bonuses:
+    - statType: 6
+      amount: 10
+      isPercentage: 0
+  - itemsRequired: 5
+    bonuses:
+    - statType: 12
+      amount: 1
+      isPercentage: 0

@@ -18,11 +18,15 @@ MonoBehaviour:
   cardType: 0
   itemBonuses:
   - statType: 2
-    amount: 5
-  - statType: 0
     amount: 10
+    isPercentage: 1
+  - statType: 0
+    amount: 2
+    isPercentage: 0
+  itemSet: {fileID: 0}
   priceGold: 0
   priceSilver: 1
   priceCopper: 0
   equipmentType: 7
-  damageAmount: 50
+  minDamage: 12
+  maxDamage: 16

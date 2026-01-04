@@ -51,7 +51,6 @@ public class ItemInfoUI : MonoBehaviour
         if (nameText != null) nameText.text = item.cardName;
         if (descriptionText != null) descriptionText.text = item.description;
 
-        // Stats mit Vergleich anzeigen (Nutzt jetzt PlayerManager.defense)
         if (statsText != null) statsText.text = GetStatsString(item);
 
         if (actionButtonText != null) actionButtonText.text = (item is ConsumableData) ? "Benutzen" : "Ausrüsten";
@@ -106,32 +105,25 @@ public class ItemInfoUI : MonoBehaviour
     {
         string result = "";
 
-        // Vergleich mit Waffen (Nutzt attackDamage)
+        // Vergleich mit Waffen (NEU: Range statt festem Wert)
         if (item is WeaponData w)
         {
-            int currentDmg = PlayerManager.Instance.attackDamage;
-            int diff = w.damageAmount - currentDmg;
-            string diffColor = diff >= 0 ? "green" : "red";
-            string sign = diff >= 0 ? "+" : "";
-
-            result = $"Schaden: {w.damageAmount} (<color={diffColor}>{sign}{diff}</color>)";
+            // Wir zeigen einfach die Range der Waffe an
+            result = $"Schaden: {w.minDamage} - {w.maxDamage}";
         }
-        // Vergleich mit Rüstung (Nutzt defense)
         else if (item is ArmorData a)
         {
-            int currentDef = PlayerManager.Instance.defense; // Korrigiert von defensePower auf defense
+            int currentDef = PlayerManager.Instance.defense;
             int diff = a.defenseAmount - currentDef;
             string diffColor = diff >= 0 ? "green" : "red";
             string sign = diff >= 0 ? "+" : "";
 
             result = $"Rüstung: {a.defenseAmount} (<color={diffColor}>{sign}{diff}</color>)";
         }
-        // Vergleich mit Accessoires
         else if (item is AccessoryData acc)
         {
             result = $"Bonus: DMG +{acc.bonusDamage} / DEF +{acc.bonusDefense}";
         }
-        // Tränke
         else if (item is ConsumableData c)
         {
             result = $"Heilung: {c.minAmount}-{c.maxAmount}";

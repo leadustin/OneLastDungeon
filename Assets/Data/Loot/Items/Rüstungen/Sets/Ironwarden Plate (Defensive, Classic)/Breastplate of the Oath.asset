@@ -1,0 +1,25 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d638ac5b4621f564591092e0031e5684, type: 3}
+  m_Name: Breastplate of the Oath
+  m_EditorClassIdentifier: Assembly-CSharp::ArmorData
+  cardName: Breastplate of the Oath
+  description: 
+  artwork: {fileID: 618985947307497156, guid: 9148a425e12d3fc4985278384b712680, type: 3}
+  cardType: 1
+  itemBonuses: []
+  itemSet: {fileID: 11400000, guid: a1d2cecd591cee74ab984a8070d2d0a0, type: 2}
+  priceGold: 50
+  priceSilver: 0
+  priceCopper: 0
+  equipmentType: 1
+  defenseAmount: 10

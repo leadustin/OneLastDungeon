@@ -1,0 +1,27 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1416a7a2133ce19468bc882d7f0ce689, type: 3}
+  m_Name: Krieger
+  m_EditorClassIdentifier: Assembly-CSharp::CharacterClassData
+  className: Krieger
+  description: Ein nobler Krieger
+  classIcon: {fileID: 0}
+  maxHealth: 100
+  maxMana: 20
+  baseDefense: 1
+  baseMinDamage: 5
+  baseMaxDamage: 7
+  baseCritChance: 5
+  baseDodgeChance: 5
+  baseBlockChance: 5
+  startingEquipment:
+  - {fileID: 11400000, guid: 803ff969a55e9bf4fa66a0d4131fd593, type: 2}

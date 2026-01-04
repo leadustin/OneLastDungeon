@@ -11,9 +11,7 @@ public class CharacterScreenUI : MonoBehaviour
     public TextMeshProUGUI defenseText;
     public TextMeshProUGUI xpText;
 
-    [Header("Links: Rüstung (Ziehe hier die Slot-Objekte rein!)")]
-    // WICHTIG: Hier kommen jetzt die Container rein (z.B. Slot_Head),
-    // auf denen das Script "EquipmentSlot" liegt.
+    [Header("Links: Rüstung")]
     public EquipmentSlot headSlot;
     public EquipmentSlot chestSlot;
     public EquipmentSlot handsSlot;
@@ -36,18 +34,20 @@ public class CharacterScreenUI : MonoBehaviour
     {
         if (PlayerManager.Instance == null) return;
 
-        // 1. Texte aktualisieren
         if (levelText != null) levelText.text = "Lvl " + PlayerManager.Instance.level;
 
         if (healthText != null) healthText.text = $"{PlayerManager.Instance.currentHealth} / {PlayerManager.Instance.maxHealth}";
         if (manaText != null) manaText.text = $"{PlayerManager.Instance.currentMana} / {PlayerManager.Instance.maxMana}";
 
-        if (damageText != null) damageText.text = "DMG: " + PlayerManager.Instance.attackDamage;
+        // NEU: Zeige Min - Max Schaden an
+        if (damageText != null)
+        {
+            damageText.text = $"DMG: {PlayerManager.Instance.minAttackDamage} - {PlayerManager.Instance.maxAttackDamage}";
+        }
+
         if (defenseText != null) defenseText.text = "DEF: " + PlayerManager.Instance.defense;
 
-        // 2. Ausrüstung aktualisieren
-        // Wir übergeben die Daten an deine Slots. Die Slots kümmern sich selbst um die Anzeige.
-
+        // Slots updaten
         if (headSlot != null) headSlot.UpdateSlotUI(PlayerManager.Instance.headItem);
         if (chestSlot != null) chestSlot.UpdateSlotUI(PlayerManager.Instance.chestItem);
         if (handsSlot != null) handsSlot.UpdateSlotUI(PlayerManager.Instance.handsItem);
@@ -64,9 +64,8 @@ public class CharacterScreenUI : MonoBehaviour
     public void CloseWindow()
     {
         // Falls du einen UIManager hast:
-        if (UIManager.Instance != null)
-            UIManager.Instance.ToggleCharacterScreen();
-        else
-            gameObject.SetActive(false);
+        // if (UIManager.Instance != null) UIManager.Instance.ToggleCharacterScreen();
+        // else 
+        gameObject.SetActive(false);
     }
 }

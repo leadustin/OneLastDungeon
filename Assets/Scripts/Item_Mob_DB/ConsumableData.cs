@@ -6,8 +6,8 @@ public enum PotionType
     Mana
 }
 
-[CreateAssetMenu(fileName = "New Potion", menuName = "Card System/Potion")]
-public class ConsumableData : PurchasableCardData // Erbt jetzt von PurchasableCardData
+[CreateAssetMenu(fileName = "NewPotion", menuName = "Game Data/Items/Potion")]
+public class ConsumableData : PurchasableCardData
 {
     [Header("Trank Einstellungen")]
     public PotionType potionType;

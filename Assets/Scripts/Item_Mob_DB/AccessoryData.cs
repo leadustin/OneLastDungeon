@@ -1,6 +1,6 @@
 using UnityEngine;
 
-[CreateAssetMenu(fileName = "NewRing", menuName = "Dungeon/Items/Ring")]
+[CreateAssetMenu(fileName = "NewAccessory", menuName = "Game Data/Items/Accessory")]
 public class AccessoryData : PurchasableCardData
 {
     [Header("Art des Schmucks")]
@@ -10,9 +10,6 @@ public class AccessoryData : PurchasableCardData
     public int bonusHealth = 0;
     public int bonusDamage = 0;
     public int bonusDefense = 0;
-
-    // HIER GELÖSCHT: public string effectDescription...
-    // Nutze stattdessen das geerbte "description" Feld im Inspector.
 
     protected void OnValidate()
     {

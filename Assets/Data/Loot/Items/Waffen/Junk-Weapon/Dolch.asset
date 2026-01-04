@@ -19,8 +19,11 @@ MonoBehaviour:
   itemBonuses:
   - statType: 2
     amount: 3
+    isPercentage: 1
+  itemSet: {fileID: 0}
   priceGold: 0
   priceSilver: 0
   priceCopper: 50
   equipmentType: 7
-  damageAmount: 25
+  minDamage: 5
+  maxDamage: 9

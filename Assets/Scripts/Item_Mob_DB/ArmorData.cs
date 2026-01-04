@@ -1,10 +1,10 @@
 using UnityEngine;
 
-[CreateAssetMenu(fileName = "New Armor", menuName = "Card System/Armor")]
+[CreateAssetMenu(fileName = "NewArmor", menuName = "Game Data/Items/Armor")] // <--- ANGEPASST
 public class ArmorData : PurchasableCardData
 {
     [Header("Welches Rüstungsteil?")]
-    public EquipmentType equipmentType; // <--- NEU: Wähle hier Head, Chest, Legs etc.
+    public EquipmentType equipmentType;
 
     [Header("Rüstung Werte")]
     public int defenseAmount = 3;

@@ -66,24 +66,81 @@ public class CombatManager : MonoBehaviour
 
         while (enemyCurrentHealth > 0 && PlayerManager.Instance.currentHealth > 0)
         {
-            // Spieler Schlag
+            // --- SPIELER ZUG ---
             yield return StartCoroutine(SmashAnimation(player.transform, enemy.transform));
 
-            int dmgToEnemy = Mathf.Max(1, PlayerManager.Instance.attackDamage - enemyDefense);
+            // 1. Basis Schaden würfeln
+            int rawDamage = PlayerManager.Instance.GetAttackDamageRoll();
+
+            // 2. Krit Prüfung
+            // Wir würfeln eine Zahl zwischen 0.0 und 100.0
+            float critRoll = Random.Range(0f, 100f);
+            bool isCrit = critRoll < PlayerManager.Instance.critChance;
+
+            // 3. Schaden berechnen
+            int finalDamage = rawDamage;
+
+            if (isCrit)
+            {
+                // Formel: +50% Basis (+ Bonus aus Items)
+                // Basis-Multiplikator ist 1.5. Items erhöhen diesen Wert.
+                float critMultiplier = 1.5f + (PlayerManager.Instance.critDamageBonus / 100f);
+                finalDamage = Mathf.FloorToInt(rawDamage * critMultiplier);
+            }
+
+            // Verteidigung des Gegners abziehen
+            int dmgToEnemy = Mathf.Max(1, finalDamage - enemyDefense);
+
             enemyCurrentHealth -= dmgToEnemy;
-            FloatingTextManager.Instance.Show("-" + dmgToEnemy, enemy.transform.position, Color.red, false);
+
+            // Visualisierung (Gelb/Groß bei Krit)
+            if (isCrit)
+            {
+                FloatingTextManager.Instance.Show("KRIT! -" + dmgToEnemy, enemy.transform.position + Vector3.up, new Color(1f, 0.5f, 0f), true); // Orange
+            }
+            else
+            {
+                FloatingTextManager.Instance.Show("-" + dmgToEnemy, enemy.transform.position, Color.red, false);
+            }
 
             yield return StartCoroutine(ShakeAnimation(enemy.transform));
 
             if (enemyCurrentHealth <= 0) break;
             yield return new WaitForSeconds(0.3f);
 
-            // Gegner Schlag
+
+            // --- GEGNER ZUG ---
             yield return StartCoroutine(SmashAnimation(enemy.transform, player.transform));
 
-            PlayerManager.Instance.TakeDamage(enemyDamage);
-            FloatingTextManager.Instance.Show("-" + enemyDamage, player.transform.position, Color.red, false);
-            yield return StartCoroutine(ShakeAnimation(player.transform));
+            // 1. Ausweichen Prüfung (Dodge)
+            float dodgeRoll = Random.Range(0f, 100f);
+            if (dodgeRoll < PlayerManager.Instance.dodgeChance)
+            {
+                // Ausgewichen!
+                FloatingTextManager.Instance.Show("Ausgewichen!", player.transform.position + Vector3.up * 0.5f, Color.cyan, false);
+            }
+            else
+            {
+                // 2. Block Prüfung
+                float blockRoll = Random.Range(0f, 100f);
+                bool isBlocked = blockRoll < PlayerManager.Instance.blockChance;
+
+                int incomingDamage = enemyDamage;
+
+                if (isBlocked)
+                {
+                    // Block halbiert den Schaden (Beispiel-Logik)
+                    incomingDamage = Mathf.CeilToInt(incomingDamage / 2f);
+                    FloatingTextManager.Instance.Show("Geblockt!", player.transform.position + Vector3.up * 0.5f, Color.white, false);
+                }
+
+                // Schaden anwenden
+                PlayerManager.Instance.TakeDamage(incomingDamage);
+
+                // Text anzeigen
+                FloatingTextManager.Instance.Show("-" + incomingDamage, player.transform.position, Color.red, false);
+                yield return StartCoroutine(ShakeAnimation(player.transform));
+            }
 
             if (PlayerManager.Instance.currentHealth <= 0) break;
             yield return new WaitForSeconds(0.5f);
@@ -94,7 +151,6 @@ public class CombatManager : MonoBehaviour
 
         if (playerWon)
         {
-            // --- HIER WIRD LOOT GECHECKT ---
             if (enemyData != null) CheckLoot(enemyData);
 
             yield return StartCoroutine(MoveCardBack(player, startEnemyPos, startHeroScale));
@@ -165,7 +221,6 @@ public class CombatManager : MonoBehaviour
 
     void CheckLoot(EnemyData enemyData)
     {
-        // 1. Gold
         float baseGold = Random.Range(enemyData.minGoldDrop, enemyData.maxGoldDrop + 1);
         float multiplier = GridManager.Instance.currentLevel.goldMultiplier;
         int finalAmount = Mathf.RoundToInt(baseGold * multiplier);
@@ -174,11 +229,9 @@ public class CombatManager : MonoBehaviour
         {
             PlayerManager.Instance.AddMoney(finalAmount);
             string formattedReward = PlayerManager.FormatMoney(finalAmount);
-            // Gold bleibt erstmal als Text, da Münz-Icons komplizierter sind
             FloatingTextManager.Instance.Show("+" + formattedReward, Vector3.zero, Color.yellow, true);
         }
 
-        // 2. Items
         if (enemyData.potentialDrops == null) return;
 
         foreach (var drop in enemyData.potentialDrops)
@@ -187,9 +240,6 @@ public class CombatManager : MonoBehaviour
             if (roll <= drop.dropChance)
             {
                 PlayerManager.Instance.AddItemToInventory(drop.item);
-
-                // --- ITEM LOGIK (NEU) ---
-                // Zeige das Artwork des gedroppten Items
                 if (drop.item.artwork != null)
                 {
                     FloatingTextManager.Instance.ShowIcon(drop.item.artwork, "", Vector3.zero, true);
@@ -203,26 +253,9 @@ public class CombatManager : MonoBehaviour
         pos = card.transform.position;
         scale = card.transform.localScale;
 
-        if (card.backgroundRenderer != null)
-        {
-            bgOrder = card.backgroundRenderer.sortingOrder;
-            card.backgroundRenderer.sortingOrder = 100;
-        }
-        else { bgOrder = 0; }
-
-        if (card.iconRenderer != null)
-        {
-            iconOrder = card.iconRenderer.sortingOrder;
-            card.iconRenderer.sortingOrder = 101;
-        }
-        else { iconOrder = 1; }
-
-        if (card.nameText != null)
-        {
-            textOrder = card.nameText.sortingOrder;
-            card.nameText.sortingOrder = 102;
-        }
-        else { textOrder = 2; }
+        if (card.backgroundRenderer != null) { bgOrder = card.backgroundRenderer.sortingOrder; card.backgroundRenderer.sortingOrder = 100; } else { bgOrder = 0; }
+        if (card.iconRenderer != null) { iconOrder = card.iconRenderer.sortingOrder; card.iconRenderer.sortingOrder = 101; } else { iconOrder = 1; }
+        if (card.nameText != null) { textOrder = card.nameText.sortingOrder; card.nameText.sortingOrder = 102; } else { textOrder = 2; }
     }
 
     void ResetCardLayer(CardController card, int oldBgOrder, int oldIconOrder, int oldTextOrder)
