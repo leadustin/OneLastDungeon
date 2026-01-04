@@ -1,0 +1,26 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: abab9a0570cc8934db79ef532ab4e1de, type: 3}
+  m_Name: Heavy Strike
+  m_EditorClassIdentifier: Assembly-CSharp::SkillData
+  skillName: Heavy Strike
+  description: Placeholder but it hits heavy
+  icon: {fileID: 3734349591600346678, guid: 3a26549ef83b5cf40b04edfe784ce0ee, type: 3}
+  cooldownTime: 10
+  skillSteps:
+  - effectLogic: {fileID: 11400000, guid: 1bd3a480676a6e040a14a84dfee2d72f, type: 2}
+    baseAmount: 20
+    scalingFactor: 1.5
+    damageType: 0
+    statusName: 
+    durationRounds: 0
+  visualEffectPrefab: {fileID: 0}

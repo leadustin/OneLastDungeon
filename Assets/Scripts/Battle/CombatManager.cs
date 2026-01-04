@@ -1,5 +1,6 @@
 using UnityEngine;
 using System.Collections;
+using System.Collections.Generic;
 using TMPro;
 
 public class CombatManager : MonoBehaviour
@@ -10,24 +11,23 @@ public class CombatManager : MonoBehaviour
     public float fightScale = 2.2f;
     public float moveSpeed = 4.0f;
     public float fightAnimationSpeed = 0.5f;
-
     public Vector3 heroOffset = new Vector3(-2.5f, 0, 0);
     public Vector3 enemyOffset = new Vector3(2.5f, 0, 0);
 
     private Camera mainCam;
     public bool isFighting = false;
 
+    // --- NEU: Globale Variable für Gegner-Leben im aktuellen Kampf ---
+    private int activeEnemyHealth;
+
+    public List<ActiveStatusEffect> enemyStatusEffects = new List<ActiveStatusEffect>();
+
     private Vector3 startHeroPos, startEnemyPos;
     private Vector3 startHeroScale, startEnemyScale;
-
     private int oldHeroBgOrder, oldHeroIconOrder, oldHeroTextOrder;
     private int oldEnemyBgOrder, oldEnemyIconOrder, oldEnemyTextOrder;
 
-    void Awake()
-    {
-        Instance = this;
-        mainCam = Camera.main;
-    }
+    void Awake() { Instance = this; mainCam = Camera.main; }
 
     public void StartCombat(CardController playerCard, CardController enemyCard)
     {
@@ -35,110 +35,122 @@ public class CombatManager : MonoBehaviour
         StartCoroutine(CombatRoutine(playerCard, enemyCard));
     }
 
+    public void AddEnemyStatusEffect(ActiveStatusEffect effect)
+    {
+        enemyStatusEffects.Add(effect);
+        Vector3 visualPos = new Vector3(mainCam.transform.position.x, mainCam.transform.position.y, 0) + enemyOffset;
+        FloatingTextManager.Instance.Show(CombatTextType.SkillName, effect.effectName, visualPos + Vector3.up);
+    }
+
+    // --- NEU: Methode damit Skills Schaden machen können ---
+    public void ApplySkillDamage(int amount)
+    {
+        if (!isFighting) return;
+
+        activeEnemyHealth -= amount;
+
+        // Visuelles Feedback beim Gegner
+        Vector3 visualPos = new Vector3(mainCam.transform.position.x, mainCam.transform.position.y, 0) + enemyOffset;
+        FloatingTextManager.Instance.Show(CombatTextType.NormalDamage, amount.ToString(), visualPos);
+
+        // Shake Effekt könnte man hier auch triggern
+    }
+
     IEnumerator CombatRoutine(CardController player, CardController enemy)
     {
         isFighting = true;
+        enemyStatusEffects.Clear();
 
         PrepareCardForFight(player, out startHeroPos, out startHeroScale, out oldHeroBgOrder, out oldHeroIconOrder, out oldHeroTextOrder);
         PrepareCardForFight(enemy, out startEnemyPos, out startEnemyScale, out oldEnemyBgOrder, out oldEnemyIconOrder, out oldEnemyTextOrder);
 
         Vector3 camCenter = new Vector3(mainCam.transform.position.x, mainCam.transform.position.y, 0);
-        Vector3 heroTargetPos = camCenter + heroOffset;
-        Vector3 enemyTargetPos = camCenter + enemyOffset;
-
         float t = 0;
         while (t < 1)
         {
             t += Time.deltaTime * moveSpeed;
-            player.transform.position = Vector3.Lerp(startHeroPos, heroTargetPos, t);
-            enemy.transform.position = Vector3.Lerp(startEnemyPos, enemyTargetPos, t);
+            player.transform.position = Vector3.Lerp(startHeroPos, camCenter + heroOffset, t);
+            enemy.transform.position = Vector3.Lerp(startEnemyPos, camCenter + enemyOffset, t);
             player.transform.localScale = Vector3.Lerp(startHeroScale, startHeroScale * fightScale, t);
             enemy.transform.localScale = Vector3.Lerp(startEnemyScale, startEnemyScale * fightScale, t);
             yield return null;
         }
 
+        // INITIIERE GEGNER LEBEN
         EnemyData enemyData = enemy.myData as EnemyData;
-        int enemyCurrentHealth = enemyData != null ? enemyData.health : 10;
+        activeEnemyHealth = enemyData != null ? enemyData.health : 10; // Wir nutzen jetzt die Klassen-Variable
         int enemyDamage = enemyData != null ? enemyData.damage : 1;
         int enemyDefense = enemyData != null ? enemyData.defense : 0;
 
         yield return new WaitForSeconds(0.2f);
 
-        while (enemyCurrentHealth > 0 && PlayerManager.Instance.currentHealth > 0)
+        // KAMPFSCHLEIFE
+        while (activeEnemyHealth > 0 && PlayerManager.Instance.currentHealth > 0)
         {
             // --- SPIELER ZUG ---
+            PlayerManager.Instance.ProcessStatusEffects();
+            yield return new WaitForSeconds(0.2f);
+
             yield return StartCoroutine(SmashAnimation(player.transform, enemy.transform));
 
-            // 1. Basis Schaden würfeln
             int rawDamage = PlayerManager.Instance.GetAttackDamageRoll();
-
-            // 2. Krit Prüfung
-            // Wir würfeln eine Zahl zwischen 0.0 und 100.0
             float critRoll = Random.Range(0f, 100f);
             bool isCrit = critRoll < PlayerManager.Instance.critChance;
-
-            // 3. Schaden berechnen
             int finalDamage = rawDamage;
+            if (isCrit) finalDamage = Mathf.FloorToInt(rawDamage * (1.5f + PlayerManager.Instance.critDamageBonus / 100f));
 
-            if (isCrit)
-            {
-                // Formel: +50% Basis (+ Bonus aus Items)
-                // Basis-Multiplikator ist 1.5. Items erhöhen diesen Wert.
-                float critMultiplier = 1.5f + (PlayerManager.Instance.critDamageBonus / 100f);
-                finalDamage = Mathf.FloorToInt(rawDamage * critMultiplier);
-            }
-
-            // Verteidigung des Gegners abziehen
             int dmgToEnemy = Mathf.Max(1, finalDamage - enemyDefense);
 
-            enemyCurrentHealth -= dmgToEnemy;
+            // Leben abziehen
+            activeEnemyHealth -= dmgToEnemy;
 
-            // Visualisierung (Gelb/Groß bei Krit)
-            if (isCrit)
-            {
-                FloatingTextManager.Instance.Show("KRIT! -" + dmgToEnemy, enemy.transform.position + Vector3.up, new Color(1f, 0.5f, 0f), true); // Orange
-            }
-            else
-            {
-                FloatingTextManager.Instance.Show("-" + dmgToEnemy, enemy.transform.position, Color.red, false);
-            }
+            if (isCrit) FloatingTextManager.Instance.Show(CombatTextType.CriticalHit, dmgToEnemy.ToString(), enemy.transform.position);
+            else FloatingTextManager.Instance.Show(CombatTextType.NormalDamage, dmgToEnemy.ToString(), enemy.transform.position);
 
             yield return StartCoroutine(ShakeAnimation(enemy.transform));
 
-            if (enemyCurrentHealth <= 0) break;
+            if (activeEnemyHealth <= 0) break;
             yield return new WaitForSeconds(0.3f);
 
 
             // --- GEGNER ZUG ---
+            int dotDamageTotal = 0;
+            for (int i = enemyStatusEffects.Count - 1; i >= 0; i--)
+            {
+                ActiveStatusEffect effect = enemyStatusEffects[i];
+                if (effect.type == StatusType.DamageOverTime)
+                {
+                    dotDamageTotal += effect.amountPerRound;
+                    FloatingTextManager.Instance.Show(CombatTextType.SkillName, effect.amountPerRound.ToString(), enemy.transform.position + Vector3.up);
+                }
+                effect.remainingRounds--;
+                if (effect.remainingRounds <= 0) enemyStatusEffects.RemoveAt(i);
+            }
+
+            if (dotDamageTotal > 0)
+            {
+                activeEnemyHealth -= dotDamageTotal;
+                yield return StartCoroutine(ShakeAnimation(enemy.transform));
+                yield return new WaitForSeconds(0.3f);
+                if (activeEnemyHealth <= 0) break;
+            }
+
             yield return StartCoroutine(SmashAnimation(enemy.transform, player.transform));
 
-            // 1. Ausweichen Prüfung (Dodge)
             float dodgeRoll = Random.Range(0f, 100f);
             if (dodgeRoll < PlayerManager.Instance.dodgeChance)
             {
-                // Ausgewichen!
-                FloatingTextManager.Instance.Show("Ausgewichen!", player.transform.position + Vector3.up * 0.5f, Color.cyan, false);
+                FloatingTextManager.Instance.Show(CombatTextType.Miss, "", player.transform.position);
             }
             else
             {
-                // 2. Block Prüfung
                 float blockRoll = Random.Range(0f, 100f);
                 bool isBlocked = blockRoll < PlayerManager.Instance.blockChance;
-
                 int incomingDamage = enemyDamage;
+                if (isBlocked) { incomingDamage = Mathf.CeilToInt(incomingDamage / 2f); FloatingTextManager.Instance.Show(CombatTextType.Block, "", player.transform.position); }
 
-                if (isBlocked)
-                {
-                    // Block halbiert den Schaden (Beispiel-Logik)
-                    incomingDamage = Mathf.CeilToInt(incomingDamage / 2f);
-                    FloatingTextManager.Instance.Show("Geblockt!", player.transform.position + Vector3.up * 0.5f, Color.white, false);
-                }
-
-                // Schaden anwenden
                 PlayerManager.Instance.TakeDamage(incomingDamage);
-
-                // Text anzeigen
-                FloatingTextManager.Instance.Show("-" + incomingDamage, player.transform.position, Color.red, false);
+                FloatingTextManager.Instance.Show(CombatTextType.NormalDamage, incomingDamage.ToString(), player.transform.position);
                 yield return StartCoroutine(ShakeAnimation(player.transform));
             }
 
@@ -146,16 +158,16 @@ public class CombatManager : MonoBehaviour
             yield return new WaitForSeconds(0.5f);
         }
 
+        // KAMPFENDE
         yield return new WaitForSeconds(0.3f);
         bool playerWon = PlayerManager.Instance.currentHealth > 0;
+        enemyStatusEffects.Clear();
 
         if (playerWon)
         {
             if (enemyData != null) CheckLoot(enemyData);
-
             yield return StartCoroutine(MoveCardBack(player, startEnemyPos, startHeroScale));
             ResetCardLayer(player, oldHeroBgOrder, oldHeroIconOrder, oldHeroTextOrder);
-
             enemy.transform.position = startEnemyPos;
             ResetCardLayer(enemy, oldEnemyBgOrder, oldEnemyIconOrder, oldEnemyTextOrder);
             GridManager.Instance.FinishMovement(enemy);
@@ -166,8 +178,8 @@ public class CombatManager : MonoBehaviour
             ResetCardLayer(player, oldHeroBgOrder, oldHeroIconOrder, oldHeroTextOrder);
             ResetCardLayer(enemy, oldEnemyBgOrder, oldEnemyIconOrder, oldEnemyTextOrder);
             Debug.Log("Player defeated!");
+            PlayerManager.Instance.currentStatusEffects.Clear();
         }
-
         isFighting = false;
     }
 
@@ -229,7 +241,7 @@ public class CombatManager : MonoBehaviour
         {
             PlayerManager.Instance.AddMoney(finalAmount);
             string formattedReward = PlayerManager.FormatMoney(finalAmount);
-            FloatingTextManager.Instance.Show("+" + formattedReward, Vector3.zero, Color.yellow, true);
+            FloatingTextManager.Instance.Show(CombatTextType.Gold, formattedReward, Vector3.zero);
         }
 
         if (enemyData.potentialDrops == null) return;
@@ -242,7 +254,7 @@ public class CombatManager : MonoBehaviour
                 PlayerManager.Instance.AddItemToInventory(drop.item);
                 if (drop.item.artwork != null)
                 {
-                    FloatingTextManager.Instance.ShowIcon(drop.item.artwork, "", Vector3.zero, true);
+                    FloatingTextManager.Instance.ShowIcon(drop.item.artwork, "", Vector3.zero);
                 }
             }
         }

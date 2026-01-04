@@ -5137,11 +5137,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 8787789521467350918, guid: c4e449c77b42eab4aac6e47fff77d085, type: 3}
       propertyPath: m_SizeDelta.x
-      value: 17
+      value: 20
       objectReference: {fileID: 0}
     - target: {fileID: 8787789521467350918, guid: c4e449c77b42eab4aac6e47fff77d085, type: 3}
       propertyPath: m_SizeDelta.y
-      value: 17
+      value: 20
       objectReference: {fileID: 0}
     - target: {fileID: 8787789521467350918, guid: c4e449c77b42eab4aac6e47fff77d085, type: 3}
       propertyPath: m_LocalScale.x
@@ -5157,11 +5157,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 8787789521467350918, guid: c4e449c77b42eab4aac6e47fff77d085, type: 3}
       propertyPath: m_AnchoredPosition.x
-      value: 159.3
+      value: 152.1
       objectReference: {fileID: 0}
     - target: {fileID: 8787789521467350918, guid: c4e449c77b42eab4aac6e47fff77d085, type: 3}
       propertyPath: m_AnchoredPosition.y
-      value: -188.5
+      value: -173.4
       objectReference: {fileID: 0}
     - target: {fileID: 8787789521467350969, guid: c4e449c77b42eab4aac6e47fff77d085, type: 3}
       propertyPath: m_OnClick.m_PersistentCalls.m_Calls.Array.data[0].m_Mode
@@ -5909,6 +5909,11 @@ MonoBehaviour:
   maxMana: 50
   currentMana: 0
   level: 1
+  currentXP: 0
+  xpToNextLevel: 100
+  xpScaleFactor: 1.5
+  skillPoints: 0
+  learnedSkills: []
   baseMinDamage: 2
   baseMaxDamage: 4
   baseDefense: 2

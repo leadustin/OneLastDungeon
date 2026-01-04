@@ -1,48 +1,90 @@
 using UnityEngine;
+using System.Collections.Generic;
+
+// Die verschiedenen Arten von Texten
+public enum CombatTextType
+{
+    NormalDamage,
+    CriticalHit,
+    Heal,
+    SkillName,
+    Miss,
+    Block,
+    Gold // <--- NEU
+}
+
+// Einstellungen für den Inspector
+[System.Serializable]
+public struct CombatTextStyle
+{
+    public CombatTextType type;
+    public Color color;
+    public float fontSize;
+    public bool isBold;
+    public string prefix; // z.B. "+" oder "-"
+}
 
 public class FloatingTextManager : MonoBehaviour
 {
     public static FloatingTextManager Instance;
 
-    public GameObject textPrefab; // Dein altes Text-Prefab (für Schaden)
+    [Header("Prefabs")]
+    public GameObject textPrefab;
+    public GameObject iconPrefab; // <--- WICHTIG: Hier dein FloatingIcon_Prefab reinziehen!
 
-    [Header("Neu: Das Icon Prefab")]
-    public GameObject iconPrefab; // <--- HIER DEIN NEUES PREFAB REINZIEHEN
+    [Header("Styles")]
+    public List<CombatTextStyle> styles;
 
-    [Header("Feste Position (Relativ zur Kamera)")]
-    public Vector3 fixedSpawnOffset = new Vector3(0, 1.5f, 5f);
+    private Dictionary<CombatTextType, CombatTextStyle> styleLookup;
 
     void Awake()
     {
         Instance = this;
+        // Styles in Dictionary laden für schnelleren Zugriff
+        styleLookup = new Dictionary<CombatTextType, CombatTextStyle>();
+        foreach (var style in styles)
+        {
+            if (!styleLookup.ContainsKey(style.type))
+                styleLookup.Add(style.type, style);
+        }
     }
 
-    // --- ALTE METHODE (Bleibt für Schadenstexte) ---
-    public void Show(string text, Vector3 position, Color color, bool useFixedScreenPos = false)
+    // --- TEXT ANZEIGEN (Das neue System) ---
+    public void Show(CombatTextType type, string text, Vector3 worldPos)
     {
         if (textPrefab == null) return;
-        Vector3 spawnPos = useFixedScreenPos ? GetFixedPos() : position + new Vector3(0, 1f, -2f);
 
+        // 1. Style suchen (oder Default nehmen)
+        CombatTextStyle style = styleLookup.ContainsKey(type) ? styleLookup[type] : GetDefaultStyle();
+
+        // 2. Text bauen (Prefix + Text)
+        string finalText = style.prefix + text;
+
+        // 3. Position leicht variieren
+        Vector3 offset = new Vector3(Random.Range(-0.3f, 0.3f), Random.Range(0.5f, 1f), 0);
+        Vector3 spawnPos = worldPos + offset;
+
+        // 4. Spawnen
         GameObject go = Instantiate(textPrefab, spawnPos, Quaternion.identity);
-        go.GetComponent<FloatingText>().Setup(text, color);
+
+        // 5. Konfigurieren
+        go.GetComponent<FloatingText>().Setup(finalText, style.color, style.fontSize, style.isBold);
     }
 
-    // --- NEUE METHODE (Für Items) ---
-    public void ShowIcon(Sprite icon, string optionalText, Vector3 position, bool useFixedScreenPos = false)
+    // --- ICON ANZEIGEN (Wiederhergestellt!) ---
+    public void ShowIcon(Sprite icon, string optionalText, Vector3 worldPos)
     {
         if (iconPrefab == null) return;
 
-        Vector3 spawnPos = useFixedScreenPos ? GetFixedPos() : position + new Vector3(0, 1f, -2f);
+        Vector3 offset = new Vector3(0, 1f, 0);
+        GameObject go = Instantiate(iconPrefab, worldPos + offset, Quaternion.identity);
 
-        GameObject go = Instantiate(iconPrefab, spawnPos, Quaternion.identity);
-
-        // Wir übergeben das Sprite an das neue Skript
+        // Wir nutzen Weiß als Standardfarbe für Icons
         go.GetComponent<FloatingIcon>().Setup(icon, optionalText, Color.white);
     }
 
-    private Vector3 GetFixedPos()
+    private CombatTextStyle GetDefaultStyle()
     {
-        Vector3 camPos = Camera.main.transform.position;
-        return new Vector3(camPos.x, camPos.y, 0) + fixedSpawnOffset;
+        return new CombatTextStyle { color = Color.white, fontSize = 6, isBold = false, prefix = "" };
     }
 }

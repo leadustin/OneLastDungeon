@@ -1,6 +1,6 @@
 using UnityEngine;
-using UnityEngine.UI;  // Wichtig für Toggle und Image
-using TMPro;           // Wichtig für TextMeshPro
+using UnityEngine.UI;
+using TMPro;
 
 public class MainMenuUI : MonoBehaviour
 {
@@ -9,19 +9,19 @@ public class MainMenuUI : MonoBehaviour
     public GameObject characterCreationRoot;
 
     [Header("--- INPUTS & BILD ---")]
-    public TMP_InputField nameInputField; // Dein Eingabefeld
-    public Image classIconDisplay;        // Das große Bild in der Mitte
-    public Toggle maleToggle;             // ZIEHE HIER DEIN "ToggleMale" REIN!
+    public TMP_InputField nameInputField;
+    public Image classIconDisplay;
+    public Toggle maleToggle;
 
     [Header("--- RECHTE LEISTE (Klasse) ---")]
-    public TextMeshProUGUI classNameText;        // Der Text ZWISCHEN den Pfeilen rechts
-    public TextMeshProUGUI classDescriptionText; // Der große Text darunter
-    public CharacterClassData[] availableClasses; // Hier deine ScriptableObjects reinziehen (Warrior, Rogue...)
+    public TextMeshProUGUI classNameText;
+    public TextMeshProUGUI classDescriptionText;
+    public CharacterClassData[] availableClasses;
 
     [Header("--- LINKE LEISTE (Optionen) ---")]
-    public TextMeshProUGUI raceText;       // Text zwischen den Rassen-Pfeilen
-    public TextMeshProUGUI backgroundText; // Text zwischen den Herkunft-Pfeilen
-    public TextMeshProUGUI keepsakeText;   // Text zwischen den Bonus-Pfeilen
+    public TextMeshProUGUI raceText;
+    public TextMeshProUGUI backgroundText;
+    public TextMeshProUGUI keepsakeText;
 
     // --- INTERNE DATEN-LISTEN (String Arrays) ---
     private string[] races = { "Human", "Elf", "Dwarf", "Orc" };
@@ -39,7 +39,6 @@ public class MainMenuUI : MonoBehaviour
 
     void Start()
     {
-        // Beim Start sicherstellen, dass das Menü offen ist und Char-Creation zu
         ShowMainMenu();
     }
 

@@ -11,7 +11,7 @@ public class PlayerManager : MonoBehaviour
     public GameObject mainUIPanel;
 
     [Header("DEBUG: Start-Klasse hier reinziehen zum Testen")]
-    public CharacterClassData debugStartClass; // <--- WICHTIG ZUM TESTEN
+    public CharacterClassData debugStartClass;
 
     [Header("Spieler Werte")]
     public string playerName = "Held";
@@ -21,13 +21,28 @@ public class PlayerManager : MonoBehaviour
     public float currentMana;
     public int level = 1;
 
+    [Header("Aktive Effekte")]
+    public List<ActiveStatusEffect> currentStatusEffects = new List<ActiveStatusEffect>();
+
+    [Header("Level & Erfahrung")]
+    public int currentXP = 0;
+    public int xpToNextLevel = 100;
+    public float xpScaleFactor = 1.5f;
+    public int skillPoints = 0;
+
+    [Header("Skills & Magie")]
+    // Die Liste der Skills, die der Spieler aktuell beherrscht
+    public List<SkillData> learnedSkills = new List<SkillData>();
+    // Speichert, wann ein Skill zuletzt genutzt wurde: "Feuerball" -> Zeitstempel
+    private Dictionary<string, float> skillCooldowns = new Dictionary<string, float>();
+
     [Header("Basis Stats (Kommen aus der Klasse)")]
     public int baseMinDamage = 2;
     public int baseMaxDamage = 4;
     public int baseDefense = 0;
-    public float baseCritChance = 5.0f;  // NEU
-    public float baseDodgeChance = 0.0f; // NEU
-    public float baseBlockChance = 0.0f; // NEU
+    public float baseCritChance = 5.0f;
+    public float baseDodgeChance = 0.0f;
+    public float baseBlockChance = 0.0f;
 
     [Header("Finale Werte (Berechnet)")]
     public int minAttackDamage;
@@ -57,19 +72,16 @@ public class PlayerManager : MonoBehaviour
 
     void Start()
     {
-        // 1. ZUERST PRÜFEN: Hat der GameManager eine Wahl getroffen?
         if (GameManager.Instance != null && GameManager.Instance.selectedClass != null)
         {
             Initialize(GameManager.Instance.selectedClass);
         }
-        // 2. SONST: Debug-Feld prüfen (für Tests direkt in der Szene)
         else if (debugStartClass != null)
         {
             Initialize(debugStartClass);
         }
         else
         {
-            // Fallback (ganz alt)
             currentHealth = maxHealth;
             currentMana = maxMana;
             CalculateStats();
@@ -79,21 +91,17 @@ public class PlayerManager : MonoBehaviour
         UpdateUI();
     }
 
-    // INITIALISIERUNG DER KLASSE ---
+    // --- INITIALISIERUNG ---
     public void Initialize(CharacterClassData classData)
     {
         if (classData == null) return;
 
         Debug.Log($"Initialisiere Klasse: {classData.className}");
 
-        // 1. Basis-Werte übernehmen
+        // 1. Basis-Werte & Name laden
         playerName = PlayerPrefs.GetString("PlayerName", classData.className);
-
-        // (Optional: So würdest du die anderen Daten laden, wenn du sie brauchst)
         string loadedRace = PlayerPrefs.GetString("PlayerRace", "Human");
         string loadedGender = PlayerPrefs.GetString("PlayerGender", "Female");
-        Debug.Log($"Geladener Charakter: {playerName} ({loadedRace}, {loadedGender})");
-        // -----------------------------
 
         maxHealth = classData.maxHealth;
         currentHealth = maxHealth;
@@ -121,6 +129,17 @@ public class PlayerManager : MonoBehaviour
             }
         }
 
+        // 4. Skills lernen (NEU!)
+        learnedSkills.Clear();
+        skillCooldowns.Clear();
+        if (classData.startingSkills != null)
+        {
+            foreach (var skill in classData.startingSkills)
+            {
+                if (skill != null) learnedSkills.Add(skill);
+            }
+        }
+
         CalculateStats();
     }
 
@@ -132,6 +151,151 @@ public class PlayerManager : MonoBehaviour
             mainUIPanel.SetActive(isActive);
             if (isActive) UpdateUI();
         }
+    }
+
+    // --- SKILL SYSTEM (MODULAR / BAUKASTEN) ---
+
+    public void TryUseSkill(SkillData skill)
+    {
+        if (skill == null) return;
+
+        // 1. Cooldown prüfen
+        if (IsSkillOnCooldown(skill))
+        {
+            Debug.Log($"Skill '{skill.skillName}' ist noch nicht bereit!");
+            return;
+        }
+
+
+        // 2. Cooldown setzen
+        skillCooldowns[skill.skillName] = Time.time;
+        UpdateUI();
+
+        // 3. Effekte abfeuern
+        if (skill.skillSteps != null) // War früher 'effects'
+        {
+            foreach (var step in skill.skillSteps)
+            {
+                if (step.effectLogic != null)
+                {
+                    // Hier übergeben wir den Caster UND die Daten aus dem Schritt!
+                    step.effectLogic.Activate(this.gameObject, step);
+                }
+            }
+        }
+
+        if (skill.visualEffectPrefab != null)
+        {
+            Instantiate(skill.visualEffectPrefab, this.transform.position, Quaternion.identity);
+        }
+    }
+
+    // Hilfsfunktion: Wie viel % Cooldown ist noch übrig? (0.0 bis 1.0)
+    public float GetSkillCooldownRatio(SkillData skill)
+    {
+        if (skill == null || !skillCooldowns.ContainsKey(skill.skillName)) return 0f;
+
+        float lastUsed = skillCooldowns[skill.skillName];
+        float timePassed = Time.time - lastUsed;
+
+        if (timePassed >= skill.cooldownTime) return 0f; // Fertig
+
+        // Berechne Prozentwert für das Overlay (z.B. 0.5 = halb voll)
+        return 1f - (timePassed / skill.cooldownTime);
+    }
+
+    public bool IsSkillOnCooldown(SkillData skill)
+    {
+        return GetSkillCooldownRatio(skill) > 0;
+    }
+
+
+    // --- LEVEL SYSTEM ---
+
+    public void AddExperience(int amount)
+    {
+        currentXP += amount;
+        while (currentXP >= xpToNextLevel)
+        {
+            LevelUp();
+        }
+        UpdateUI();
+    }
+
+    void LevelUp()
+    {
+        currentXP -= xpToNextLevel;
+        level++;
+        xpToNextLevel = Mathf.RoundToInt(xpToNextLevel * xpScaleFactor);
+
+        float healthIncrease = maxHealth * 0.1f;
+        maxHealth += Mathf.RoundToInt(healthIncrease);
+        currentHealth = maxHealth;
+
+        maxMana += 5;
+        currentMana = maxMana;
+
+        baseMinDamage += 1;
+        baseMaxDamage += 2;
+        skillPoints++;
+
+        Debug.Log($"LEVEL UP! Level {level}. HP: {maxHealth}");
+        CalculateStats();
+        UpdateUI();
+    }
+
+    // --- STATUS SYSTEM: Methode zum Hinzufügen ---
+    public void AddStatusEffect(ActiveStatusEffect effect)
+    {
+        // Einfaches Hinzufügen zur Liste
+        currentStatusEffects.Add(effect);
+
+        // Optional: Visuelles Feedback (Text über dem Spieler)
+        if (GridManager.Instance != null && FloatingTextManager.Instance != null)
+        {
+            Vector3 pos = GridManager.Instance.GetPlayerCardPosition();
+            // Zeigt den Namen des Effekts (z.B. "Regeneration") in der Skill-Farbe an
+            FloatingTextManager.Instance.Show(CombatTextType.SkillName, effect.effectName, pos + Vector3.up);
+        }
+
+        Debug.Log($"Status '{effect.effectName}' auf Spieler angewendet ({effect.remainingRounds} Runden).");
+    }
+
+    // Diese Funktion ruft der CombatManager gleich zu Beginn jeder Runde auf
+    public void ProcessStatusEffects()
+    {
+        // Wir gehen rückwärts durch die Liste, damit wir sicher löschen können
+        for (int i = currentStatusEffects.Count - 1; i >= 0; i--)
+        {
+            ActiveStatusEffect effect = currentStatusEffects[i];
+
+            // 1. Effekt ausführen
+            if (effect.type == StatusType.HealOverTime)
+            {
+                Heal(effect.amountPerRound);
+                // Grüner Text über dem Spieler (nutzt GridManager Position)
+                Vector3 pos = Vector3.zero;
+                if (GridManager.Instance != null) pos = GridManager.Instance.GetPlayerCardPosition();
+
+                FloatingTextManager.Instance.Show(CombatTextType.Heal, effect.amountPerRound.ToString(), pos + Vector3.up);
+            }
+            // (Hier könnte man auch Self-Damage hinzufügen)
+
+            // 2. Zeit abziehen
+            effect.remainingRounds--;
+
+            // 3. Wenn abgelaufen, löschen
+            if (effect.remainingRounds <= 0)
+            {
+                currentStatusEffects.RemoveAt(i);
+            }
+        }
+    }
+
+    // Reset bei Tod oder Kampfende (optional)
+    public void ClearStatusEffects()
+    {
+        currentStatusEffects.Clear();
     }
 
     // --- KAMPF LOGIK ---
@@ -205,7 +369,6 @@ public class PlayerManager : MonoBehaviour
         UpdateUI();
     }
 
-    // Hilfsfunktion zum kompletten Leeren
     void UnequipAll()
     {
         headItem = null; chestItem = null; handsItem = null;
@@ -223,24 +386,19 @@ public class PlayerManager : MonoBehaviour
     // --- STATS BERECHNUNG ---
     void CalculateStats()
     {
-        // 1. Reset auf Basiswerte (JETZT DYNAMISCH)
         minAttackDamage = baseMinDamage;
         maxAttackDamage = baseMaxDamage;
         defense = baseDefense;
-
-        // Nutze die neuen Basis-Variablen
         critChance = baseCritChance;
         critDamageBonus = 0.0f;
         dodgeChance = baseDodgeChance;
         blockChance = baseBlockChance;
 
-        // 2. Addiere Einzel-Items
         AddStatsFrom(headItem); AddStatsFrom(chestItem); AddStatsFrom(handsItem);
         AddStatsFrom(legsItem); AddStatsFrom(feetItem); AddStatsFrom(neckItem);
         AddStatsFrom(ring1Item); AddStatsFrom(ring2Item); AddStatsFrom(weaponItem);
         AddStatsFrom(offhandItem);
 
-        // 3. Addiere Set-Boni
         CalculateSetBonuses();
     }
 
@@ -266,13 +424,9 @@ public class PlayerManager : MonoBehaviour
         {
             ItemSetData set = entry.Key;
             int count = entry.Value;
-
             foreach (var step in set.setBonuses)
             {
-                if (count >= step.itemsRequired)
-                {
-                    ApplyBonusList(step.bonuses);
-                }
+                if (count >= step.itemsRequired) ApplyBonusList(step.bonuses);
             }
         }
     }
@@ -407,6 +561,15 @@ public class PlayerManager : MonoBehaviour
         }
     }
 
+    void Update()
+    {
+        if (Input.GetKeyDown(KeyCode.L))
+        {
+            AddExperience(50);
+            Debug.Log("50 XP erhalten! Aktuell: " + currentXP + "/" + xpToNextLevel);
+        }
+    }
+
     public void RequestEquipItem(CardData item)
     {
         if (item is ConsumableData) UseItem(item);
@@ -429,7 +592,6 @@ public class PlayerManager : MonoBehaviour
     public bool IsItemEquipped(CardData item)
     {
         if (item == null) return false;
-
         if (headItem == item) return true;
         if (chestItem == item) return true;
         if (handsItem == item) return true;
@@ -440,7 +602,6 @@ public class PlayerManager : MonoBehaviour
         if (ring2Item == item) return true;
         if (weaponItem == item) return true;
         if (offhandItem == item) return true;
-
         return false;
     }
 }

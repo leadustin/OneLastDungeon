@@ -26,4 +26,7 @@ public class CharacterClassData : ScriptableObject
     [Header("Start-Ausrüstung")]
     // Hier ziehen wir die Items rein, die der Held beim Start tragen soll
     public List<CardData> startingEquipment;
+
+    [Header("Fähigkeiten")]
+    public List<SkillData> startingSkills;
 }

@@ -14,6 +14,11 @@ public class GridManager : MonoBehaviour
     public float gridOffsetY = 1.0f;
     public GameObject cardPrefab;
 
+    [Header("Editor Debugging")]
+    public bool showGizmos = true;
+    public Color gizmoColor = Color.green;
+    public Vector2 cardGizmoSize = new Vector2(1.4f, 2.0f); // Größe der Rahmen im Editor
+
     private CardController[,] gridArray;
     private Vector2Int playerPos;
 
@@ -41,7 +46,9 @@ public class GridManager : MonoBehaviour
         {
             for (int y = 0; y < height; y++)
             {
-                Vector3 pos = new Vector3(startX + (x * spacingX), startY - (y * spacingY) + gridOffsetY, 0);
+                // WICHTIG: transform.position hinzugefügt, damit das Grid mit dem Objekt wandert!
+                Vector3 pos = transform.position + new Vector3(startX + (x * spacingX), startY - (y * spacingY) + gridOffsetY, 0);
+
                 GameObject newObj = Instantiate(cardPrefab, pos, Quaternion.identity, this.transform);
                 CardController card = newObj.GetComponent<CardController>();
 
@@ -86,28 +93,20 @@ public class GridManager : MonoBehaviour
         }
         else if (data is CurrencyData moneyDrop)
         {
-            // --- GELD LOGIK (KORRIGIERT FÜR LONG) ---
-            // Wir wandeln long-Werte explizit in int um für Random.Range
             int minVal = (int)moneyDrop.GetMinInCopper();
             int maxVal = (int)moneyDrop.GetMaxInCopper();
-
             int baseAmount = Random.Range(minVal, maxVal + 1);
-
-            // Expliziter Cast zu long nach der Multiplikation mit dem float Multiplier
             long finalAmount = (long)(baseAmount * currentLevel.goldMultiplier);
 
             PlayerManager.Instance.AddMoney(finalAmount);
-
             string formattedText = PlayerManager.FormatMoney(finalAmount);
-            FloatingTextManager.Instance.Show("+" + formattedText, Vector3.zero, Color.yellow, true);
+
+            FloatingTextManager.Instance.Show(CombatTextType.Gold, formattedText, target.transform.position);
         }
         else
         {
-            // --- ITEM LOGIK ---
             PlayerManager.Instance.AddItemToInventory(data);
-
-            // Wir zeigen das Icon statt Text
-            FloatingTextManager.Instance.ShowIcon(data.artwork, "", target.transform.position, false);
+            FloatingTextManager.Instance.ShowIcon(data.artwork, "", target.transform.position);
         }
 
         FinishMovement(target);
@@ -135,7 +134,9 @@ public class GridManager : MonoBehaviour
     {
         float startX = -((currentLevel.gridWidth - 1) * spacingX) / 2;
         float startY = ((currentLevel.gridHeight - 1) * spacingY) / 2;
-        Vector3 pos = new Vector3(startX + (x * spacingX), startY - (y * spacingY) + gridOffsetY, 0);
+
+        // AUCH HIER: transform.position berücksichtigen
+        Vector3 pos = transform.position + new Vector3(startX + (x * spacingX), startY - (y * spacingY) + gridOffsetY, 0);
 
         GameObject newObj = Instantiate(cardPrefab, pos, Quaternion.identity, this.transform);
         CardController card = newObj.GetComponent<CardController>();
@@ -162,5 +163,48 @@ public class GridManager : MonoBehaviour
             if (randomPoint <= currentWeight) return entry.card;
         }
         return pool[0].card;
+    }
+
+    public Vector3 GetPlayerCardPosition()
+    {
+        if (gridArray != null)
+        {
+            if (playerPos.x >= 0 && playerPos.y >= 0)
+            {
+                CardController playerCard = gridArray[playerPos.x, playerPos.y];
+                if (playerCard != null) return playerCard.transform.position;
+            }
+        }
+        return Vector3.zero;
+    }
+
+    // --- VISUALISIERUNG IM EDITOR ---
+    private void OnDrawGizmos()
+    {
+        if (!showGizmos || currentLevel == null) return;
+
+        Gizmos.color = gizmoColor;
+
+        int width = currentLevel.gridWidth;
+        int height = currentLevel.gridHeight;
+
+        // Berechnung der Startposition (identisch zu GenerateGrid)
+        float startX = -((width - 1) * spacingX) / 2;
+        float startY = ((height - 1) * spacingY) / 2;
+
+        for (int x = 0; x < width; x++)
+        {
+            for (int y = 0; y < height; y++)
+            {
+                // Position berechnen (relativ zum Manager-Objekt)
+                Vector3 pos = transform.position + new Vector3(startX + (x * spacingX), startY - (y * spacingY) + gridOffsetY, 0);
+
+                // Rahmen zeichnen
+                Gizmos.DrawWireCube(pos, new Vector3(cardGizmoSize.x, cardGizmoSize.y, 0.1f));
+            }
+        }
+
+        // Zeichnet einen kleinen Kreis beim Manager als Ankerpunkt
+        Gizmos.DrawSphere(transform.position, 0.2f);
     }
 }
