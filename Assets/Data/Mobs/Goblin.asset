@@ -18,11 +18,11 @@ MonoBehaviour:
   cardType: 4
   itemBonuses: []
   itemSet: {fileID: 0}
-  health: 200
+  health: 12
   damage: 2
   defense: 0
   minGoldDrop: 5
   maxGoldDrop: 15
   potentialDrops:
   - item: {fileID: 11400000, guid: 50bbe1cf8b596584aa86d36307731a66, type: 2}
-    dropChance: 25
+    dropChance: 5

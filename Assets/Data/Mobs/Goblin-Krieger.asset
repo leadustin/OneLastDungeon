@@ -16,7 +16,9 @@ MonoBehaviour:
   description: 
   artwork: {fileID: 315227663182954716, guid: 092cbe8a1fc20de4bb91d48cc74ed9be, type: 3}
   cardType: 4
-  health: 12
+  itemBonuses: []
+  itemSet: {fileID: 0}
+  health: 50
   damage: 4
   defense: 1
   minGoldDrop: 5

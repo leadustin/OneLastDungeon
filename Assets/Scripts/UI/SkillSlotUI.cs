@@ -33,6 +33,9 @@ public class SkillSlotUI : MonoBehaviour
 
     void Update()
     {
+        // 1. Sicherheits-Check: Ist der Manager überhaupt schon wach?
+        if (PlayerManager.Instance == null) return;
+
         // Kümmert sich um die Animation des Cooldowns
         if (mySkill != null && cooldownOverlay != null)
         {

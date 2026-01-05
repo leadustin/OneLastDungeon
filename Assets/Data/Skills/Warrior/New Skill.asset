@@ -17,16 +17,16 @@ MonoBehaviour:
   icon: {fileID: 0}
   cooldownTime: 30
   skillSteps:
-  - effectLogic: {fileID: 11400000, guid: 9b2b29099f274ae4cbb6c910299653ba, type: 2}
+  - effectLogic: {fileID: 11400000, guid: 1bd3a480676a6e040a14a84dfee2d72f, type: 2}
     baseAmount: 20
     scalingFactor: 0.01
-    damageType: 0
+    damageType: 2
     statusName: Heal
     durationRounds: 5
   - effectLogic: {fileID: 11400000, guid: 18179ef6109fa664bbebdaab8ddba890, type: 2}
     baseAmount: 20
     scalingFactor: 0.01
     damageType: 0
-    statusName: Heal
+    statusName: Brennen
     durationRounds: 5
   visualEffectPrefab: {fileID: 0}

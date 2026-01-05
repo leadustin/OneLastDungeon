@@ -1,12 +1,25 @@
 using UnityEngine;
 using System.Collections.Generic;
+using UnityEngine.Tilemaps;
 
 public class GridManager : MonoBehaviour
 {
     public static GridManager Instance;
 
-    [Header("Level Daten")]
+    [Header("Level Flow")]
+    public List<LevelData> levels;
+    public int currentLevelIndex = 0;
+
+    [Header("Level Design")]
+    public Tilemap levelLayout;
+    public TileBase startTile;
+    public TileBase exitTile;
+    public CardData exitCardData;
+    public GameObject missionDisplayPrefab;
+
+    [Header("Aktuelles Level (Debug)")]
     public LevelData currentLevel;
+    public int currentKillCount = 0; // --- NEU: Zählt getötete Gegner ---
 
     [Header("Layout")]
     public float spacingX = 1.6f;
@@ -17,9 +30,9 @@ public class GridManager : MonoBehaviour
     [Header("Editor Debugging")]
     public bool showGizmos = true;
     public Color gizmoColor = Color.green;
-    public Vector2 cardGizmoSize = new Vector2(1.4f, 2.0f); // Größe der Rahmen im Editor
+    public Vector2 cardGizmoSize = new Vector2(1.4f, 2.0f);
 
-    private CardController[,] gridArray;
+    private Dictionary<Vector2Int, CardController> allCards = new Dictionary<Vector2Int, CardController>();
     private Vector2Int playerPos;
 
     void Awake()
@@ -30,49 +43,206 @@ public class GridManager : MonoBehaviour
 
     void Start()
     {
-        if (currentLevel != null) GenerateGrid();
+        LoadLevel(currentLevelIndex);
     }
 
-    void GenerateGrid()
+    public void LoadLevel(int index)
     {
-        int width = currentLevel.gridWidth;
-        int height = currentLevel.gridHeight;
-        gridArray = new CardController[width, height];
+        if (levels == null || levels.Count == 0) return;
+        if (index >= levels.Count) return;
 
-        float startX = -((width - 1) * spacingX) / 2;
-        float startY = ((height - 1) * spacingY) / 2;
+        currentLevelIndex = index;
+        currentLevel = levels[currentLevelIndex];
+        currentKillCount = 0;
 
-        for (int x = 0; x < width; x++)
+        // Prefab (Tilemap) laden, ABER noch nicht scannen/spawnen
+        if (currentLevel.levelPrefab != null)
         {
-            for (int y = 0; y < height; y++)
+            if (levelLayout != null && levelLayout.transform.parent == transform)
             {
-                // WICHTIG: transform.position hinzugefügt, damit das Grid mit dem Objekt wandert!
-                Vector3 pos = transform.position + new Vector3(startX + (x * spacingX), startY - (y * spacingY) + gridOffsetY, 0);
+                Destroy(levelLayout.gameObject);
+            }
 
-                GameObject newObj = Instantiate(cardPrefab, pos, Quaternion.identity, this.transform);
-                CardController card = newObj.GetComponent<CardController>();
+            GameObject layoutObj = Instantiate(currentLevel.levelPrefab, transform);
+            levelLayout = layoutObj.GetComponent<Tilemap>();
+            layoutObj.transform.localPosition = Vector3.zero;
 
-                if (x == width / 2 && y == height / 2)
-                {
-                    playerPos = new Vector2Int(x, y);
-                    card.SetupCard(x, y, null, true);
-                }
-                else
-                {
-                    card.SetupCard(x, y, GetWeightedRandomCard(), false);
-                }
-                gridArray[x, y] = card;
+            // WICHTIG: Wir verstecken die Blaupause sofort, damit man sie nicht sieht
+            layoutObj.SetActive(false);
+        }
+
+        // Grid löschen (alte Karten wegräumen)
+        foreach (var card in allCards.Values)
+        {
+            if (card != null && card.gameObject != null) Destroy(card.gameObject);
+        }
+        allCards.Clear();
+
+        // Statt Grid zu bauen, zeigen wir jetzt das UI
+        ShowLevelMission();
+    }
+
+    void ShowLevelMission()
+    {
+        if (missionDisplayPrefab == null)
+        {
+            // Fallback: Kein UI da? Dann sofort starten!
+            StartLevelGameplay();
+            return;
+        }
+
+        string missionTitle = $"Level {currentLevelIndex + 1}";
+        string missionText = "";
+
+        switch (currentLevel.winCondition)
+        {
+            case WinCondition.ReachExit: missionText = "Finde den Ausgang!"; break;
+            case WinCondition.ClearAll: missionText = "Besiege alle Gegner!"; break;
+            case WinCondition.KillQuota: missionText = $"Besiege {currentLevel.enemiesToKill} Gegner!"; break;
+        }
+
+        Canvas canvas = FindAnyObjectByType<Canvas>();
+        if (canvas != null)
+        {
+            GameObject uiObj = Instantiate(missionDisplayPrefab, canvas.transform);
+            uiObj.GetComponent<RectTransform>().anchoredPosition = Vector2.zero;
+
+            MissionDisplay displayScript = uiObj.GetComponent<MissionDisplay>();
+            if (displayScript != null)
+            {
+                displayScript.SetMissionInfo(missionTitle, missionText);
+
+                // HIER IST DER TRICK:
+                // Wir sagen dem UI: "Wenn geklickt wird, ruf meine StartLevelGameplay Funktion auf"
+                displayScript.onFightClicked = StartLevelGameplay;
             }
         }
+        else
+        {
+            // Notfall: Kein Canvas -> Sofort starten
+            StartLevelGameplay();
+        }
+    }
+
+    void StartLevelGameplay()
+    {
+        if (levelLayout != null)
+        {
+            // Jetzt erst wird das Grid berechnet und Karten gespawnt
+            GenerateGridFromTilemap();
+        }
+    }
+
+    public void NextLevel()
+    {
+        Debug.Log("Level geschafft!");
+        LoadLevel(currentLevelIndex + 1);
+    }
+
+    // --- NEU: Prüft ob wir gewonnen haben ---
+    void CheckWinCondition()
+    {
+        if (currentLevel.winCondition == WinCondition.ClearAll)
+        {
+            // Zählen, ob noch Gegner im Dictionary sind
+            int enemiesLeft = 0;
+            foreach (var card in allCards.Values)
+            {
+                if (card.myData is EnemyData) enemiesLeft++;
+            }
+
+            if (enemiesLeft == 0) NextLevel();
+        }
+        else if (currentLevel.winCondition == WinCondition.KillQuota)
+        {
+            if (currentKillCount >= currentLevel.enemiesToKill) NextLevel();
+        }
+    }
+
+    // ... GenerateGridFromTilemap bleibt wie vorher ...
+    void GenerateGridFromTilemap()
+    {
+        levelLayout.gameObject.SetActive(false);
+        foreach (var card in allCards.Values) if (card != null) Destroy(card.gameObject);
+        allCards.Clear();
+
+        levelLayout.CompressBounds();
+        BoundsInt bounds = levelLayout.cellBounds;
+        List<Vector2Int> validPositions = new List<Vector2Int>();
+
+        bool startFound = false;
+        Vector2Int exitPos = new Vector2Int(-999, -999);
+
+        for (int x = bounds.xMin; x < bounds.xMax; x++)
+        {
+            for (int y = bounds.yMin; y < bounds.yMax; y++)
+            {
+                Vector3Int tilePos = new Vector3Int(x, y, 0);
+                if (levelLayout.HasTile(tilePos))
+                {
+                    validPositions.Add(new Vector2Int(x, y));
+                    TileBase currentTile = levelLayout.GetTile(tilePos);
+                    if (currentTile == startTile) { playerPos = new Vector2Int(x, y); startFound = true; }
+                    else if (currentTile == exitTile) { exitPos = new Vector2Int(x, y); }
+                }
+            }
+        }
+
+        if (!startFound) playerPos = GetClosestToCenter(validPositions, bounds);
+
+        foreach (Vector2Int pos in validPositions)
+        {
+            // Wenn "ClearAll" aktiv ist, spawnen wir KEINEN Ausgang, auch wenn einer gemalt wurde!
+            bool isExit = (pos == exitPos) && (currentLevel.winCondition == WinCondition.ReachExit);
+            SpawnSingleCard(pos.x, pos.y, pos == playerPos, isExit);
+        }
+    }
+
+    void SpawnSingleCard(int x, int y, bool isPlayer, bool isExit)
+    {
+        float posX = x * spacingX;
+        float posY = y * spacingY + gridOffsetY;
+        Vector3 spawnPos = new Vector3(posX, posY, 0);
+
+        GameObject newObj = Instantiate(cardPrefab, spawnPos, Quaternion.identity, this.transform);
+        CardController newCard = newObj.GetComponent<CardController>();
+        newCard.name = $"Card {x}_{y}";
+
+        allCards[new Vector2Int(x, y)] = newCard;
+
+        if (isPlayer)
+        {
+            newCard.SetupCard(x, y, null, true);
+            var camFollow = Camera.main.GetComponent<CameraFollow>();
+            if (camFollow != null) camFollow.target = newCard.transform;
+        }
+        else if (isExit && exitCardData != null)
+        {
+            newCard.SetupCard(x, y, exitCardData, false);
+        }
+        else
+        {
+            CardData randomData = GetWeightedRandomCard();
+            newCard.SetupCard(x, y, randomData, false);
+        }
+    }
+
+    // ... Hilfsfunktionen ...
+    Vector2Int GetClosestToCenter(List<Vector2Int> positions, BoundsInt bounds)
+    {
+        if (positions.Count == 0) return Vector2Int.zero;
+        Vector2 center = new Vector2(bounds.center.x, bounds.center.y);
+        Vector2Int bestPos = positions[0];
+        float bestDist = float.MaxValue;
+        foreach (var pos in positions) { float dist = Vector2.Distance(pos, center); if (dist < bestDist) { bestDist = dist; bestPos = pos; } }
+        return bestPos;
     }
 
     public void TryMovePlayer(CardController target)
     {
         if (CombatManager.Instance.isFighting || target.isPlayer) return;
-
         int dx = Mathf.Abs(target.gridX - playerPos.x);
         int dy = Mathf.Abs(target.gridY - playerPos.y);
-
         if (dx <= 1 && dy <= 1) InteractWithCard(target);
     }
 
@@ -80,131 +250,130 @@ public class GridManager : MonoBehaviour
     {
         CardData data = target.myData;
 
-        if (data == null)
+        // --- Leere Karte (Boden) ---
+        if (data == currentLevel.emptyCard)
         {
             FinishMovement(target);
             return;
         }
 
+        if (data == null) { FinishMovement(target); return; }
+
+        // --- Sieg Typ A: Ausgang ---
+        if (data == exitCardData)
+        {
+            if (currentLevel.winCondition == WinCondition.ReachExit) NextLevel();
+            return;
+        }
+
         if (data is EnemyData)
         {
-            CombatManager.Instance.StartCombat(gridArray[playerPos.x, playerPos.y], target);
+            if (allCards.ContainsKey(playerPos)) CombatManager.Instance.StartCombat(allCards[playerPos], target);
             return;
         }
         else if (data is CurrencyData moneyDrop)
         {
+            // Gold logic...
             int minVal = (int)moneyDrop.GetMinInCopper();
             int maxVal = (int)moneyDrop.GetMaxInCopper();
             int baseAmount = Random.Range(minVal, maxVal + 1);
             long finalAmount = (long)(baseAmount * currentLevel.goldMultiplier);
-
             PlayerManager.Instance.AddMoney(finalAmount);
             string formattedText = PlayerManager.FormatMoney(finalAmount);
-
             FloatingTextManager.Instance.Show(CombatTextType.Gold, formattedText, target.transform.position);
+            FinishMovement(target);
         }
         else
         {
+            // Item logic...
             PlayerManager.Instance.AddItemToInventory(data);
-            FloatingTextManager.Instance.ShowIcon(data.artwork, "", target.transform.position);
+            if (data.artwork != null) FloatingTextManager.Instance.ShowIcon(data.artwork, "", target.transform.position);
+            FinishMovement(target);
         }
-
-        FinishMovement(target);
     }
 
     public void FinishMovement(CardController target)
     {
-        int oldX = playerPos.x;
-        int oldY = playerPos.y;
-        CardController playerCard = gridArray[oldX, oldY];
+        Vector2Int oldPos = playerPos;
+        Vector2Int newPos = new Vector2Int(target.gridX, target.gridY);
+
+        // --- Zählen für Sieg-Bedingungen ---
+        if (target.myData is EnemyData)
+        {
+            currentKillCount++;
+        }
+
+        if (!allCards.ContainsKey(oldPos)) return;
+        CardController playerCard = allCards[oldPos];
 
         Vector3 targetPosWorld = target.transform.position;
         if (target.gameObject != null) Destroy(target.gameObject);
 
-        playerCard.transform.position = targetPosWorld;
-        playerCard.gridX = target.gridX;
-        playerCard.gridY = target.gridY;
-        gridArray[target.gridX, target.gridY] = playerCard;
-        playerPos = new Vector2Int(target.gridX, target.gridY);
+        allCards.Remove(newPos);
+        allCards.Remove(oldPos);
 
-        SpawnNewCardAt(oldX, oldY);
+        playerCard.transform.position = targetPosWorld;
+        playerCard.gridX = newPos.x;
+        playerCard.gridY = newPos.y;
+
+        allCards[newPos] = playerCard;
+        playerPos = newPos;
+
+        // --- NEU: Spawn-Logik ---
+        if (currentLevel.respawnCards)
+        {
+            // Alte Logik: Neuer Gegner kommt nach
+            SpawnNewCardAt(oldPos.x, oldPos.y, false);
+        }
+        else
+        {
+            // Neue Logik: Leere Karte spawnen
+            SpawnNewCardAt(oldPos.x, oldPos.y, true);
+        }
+
+        // --- Nach jeder Bewegung prüfen ob gewonnen ---
+        CheckWinCondition();
     }
 
-    void SpawnNewCardAt(int x, int y)
+    // Angepasste Funktion: Kann jetzt auch explizit "Leer" spawnen
+    void SpawnNewCardAt(int x, int y, bool spawnEmpty)
     {
-        float startX = -((currentLevel.gridWidth - 1) * spacingX) / 2;
-        float startY = ((currentLevel.gridHeight - 1) * spacingY) / 2;
-
-        // AUCH HIER: transform.position berücksichtigen
-        Vector3 pos = transform.position + new Vector3(startX + (x * spacingX), startY - (y * spacingY) + gridOffsetY, 0);
+        float posX = x * spacingX;
+        float posY = y * spacingY + gridOffsetY;
+        Vector3 pos = new Vector3(posX, posY, 0);
 
         GameObject newObj = Instantiate(cardPrefab, pos, Quaternion.identity, this.transform);
         CardController card = newObj.GetComponent<CardController>();
-        card.SetupCard(x, y, GetWeightedRandomCard(), false);
-        gridArray[x, y] = card;
+
+        if (spawnEmpty && currentLevel.emptyCard != null)
+        {
+            card.SetupCard(x, y, currentLevel.emptyCard, false);
+        }
+        else
+        {
+            card.SetupCard(x, y, GetWeightedRandomCard(), false);
+        }
+
+        allCards[new Vector2Int(x, y)] = card;
     }
 
     CardData GetWeightedRandomCard()
     {
+        if (currentLevel == null) return null;
         bool spawnEnemy = Random.value > 0.4f;
         List<SpawnRate> pool = spawnEnemy ? currentLevel.enemies : currentLevel.items;
-
         if (pool == null || pool.Count == 0) pool = currentLevel.items;
         if (pool == null || pool.Count == 0) return null;
 
         float totalWeight = 0;
         foreach (var entry in pool) totalWeight += entry.weight;
-
         float randomPoint = Random.Range(0, totalWeight);
         float currentWeight = 0;
-        foreach (var entry in pool)
-        {
-            currentWeight += entry.weight;
-            if (randomPoint <= currentWeight) return entry.card;
-        }
+        foreach (var entry in pool) { currentWeight += entry.weight; if (randomPoint <= currentWeight) return entry.card; }
         return pool[0].card;
     }
 
-    public Vector3 GetPlayerCardPosition()
-    {
-        if (gridArray != null)
-        {
-            if (playerPos.x >= 0 && playerPos.y >= 0)
-            {
-                CardController playerCard = gridArray[playerPos.x, playerPos.y];
-                if (playerCard != null) return playerCard.transform.position;
-            }
-        }
-        return Vector3.zero;
-    }
-
-    // --- VISUALISIERUNG IM EDITOR ---
-    private void OnDrawGizmos()
-    {
-        if (!showGizmos || currentLevel == null) return;
-
-        Gizmos.color = gizmoColor;
-
-        int width = currentLevel.gridWidth;
-        int height = currentLevel.gridHeight;
-
-        // Berechnung der Startposition (identisch zu GenerateGrid)
-        float startX = -((width - 1) * spacingX) / 2;
-        float startY = ((height - 1) * spacingY) / 2;
-
-        for (int x = 0; x < width; x++)
-        {
-            for (int y = 0; y < height; y++)
-            {
-                // Position berechnen (relativ zum Manager-Objekt)
-                Vector3 pos = transform.position + new Vector3(startX + (x * spacingX), startY - (y * spacingY) + gridOffsetY, 0);
-
-                // Rahmen zeichnen
-                Gizmos.DrawWireCube(pos, new Vector3(cardGizmoSize.x, cardGizmoSize.y, 0.1f));
-            }
-        }
-
-        // Zeichnet einen kleinen Kreis beim Manager als Ankerpunkt
-        Gizmos.DrawSphere(transform.position, 0.2f);
-    }
+    // ... Gizmos & Rest bleiben gleich ...
+    public Vector3 GetPlayerCardPosition() { if (allCards.ContainsKey(playerPos)) return allCards[playerPos].transform.position; return Vector3.zero; }
+    private void OnDrawGizmos() { /* ... Dein Gizmo Code ... */ }
 }

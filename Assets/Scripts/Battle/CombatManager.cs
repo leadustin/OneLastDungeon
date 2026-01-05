@@ -17,7 +17,7 @@ public class CombatManager : MonoBehaviour
     private Camera mainCam;
     public bool isFighting = false;
 
-    // --- NEU: Globale Variable für Gegner-Leben im aktuellen Kampf ---
+    // Globale Variable für Gegner-Leben im aktuellen Kampf
     private int activeEnemyHealth;
 
     public List<ActiveStatusEffect> enemyStatusEffects = new List<ActiveStatusEffect>();
@@ -32,6 +32,11 @@ public class CombatManager : MonoBehaviour
     public void StartCombat(CardController playerCard, CardController enemyCard)
     {
         if (isFighting) return;
+
+        // Kamera sperren
+        CameraFollow camScript = mainCam.GetComponent<CameraFollow>();
+        if (camScript != null) camScript.isLocked = true;
+
         StartCoroutine(CombatRoutine(playerCard, enemyCard));
     }
 
@@ -42,18 +47,22 @@ public class CombatManager : MonoBehaviour
         FloatingTextManager.Instance.Show(CombatTextType.SkillName, effect.effectName, visualPos + Vector3.up);
     }
 
-    // --- NEU: Methode damit Skills Schaden machen können ---
+    // Methode damit Skills Schaden machen können
     public void ApplySkillDamage(int amount)
     {
         if (!isFighting) return;
 
         activeEnemyHealth -= amount;
 
-        // Visuelles Feedback beim Gegner
+        // --- HUD UPDATE (Skill Schaden) ---
+        if (EnemyHUD.Instance != null)
+        {
+            EnemyHUD.Instance.UpdateHP(activeEnemyHealth);
+        }
+        // ----------------------------------
+
         Vector3 visualPos = new Vector3(mainCam.transform.position.x, mainCam.transform.position.y, 0) + enemyOffset;
         FloatingTextManager.Instance.Show(CombatTextType.NormalDamage, amount.ToString(), visualPos);
-
-        // Shake Effekt könnte man hier auch triggern
     }
 
     IEnumerator CombatRoutine(CardController player, CardController enemy)
@@ -66,6 +75,8 @@ public class CombatManager : MonoBehaviour
 
         Vector3 camCenter = new Vector3(mainCam.transform.position.x, mainCam.transform.position.y, 0);
         float t = 0;
+
+        // Animation: Karten in die Mitte bewegen
         while (t < 1)
         {
             t += Time.deltaTime * moveSpeed;
@@ -76,11 +87,20 @@ public class CombatManager : MonoBehaviour
             yield return null;
         }
 
-        // INITIIERE GEGNER LEBEN
+        // DATEN INITIALISIEREN
         EnemyData enemyData = enemy.myData as EnemyData;
-        activeEnemyHealth = enemyData != null ? enemyData.health : 10; // Wir nutzen jetzt die Klassen-Variable
+        int maxHealth = enemyData != null ? enemyData.health : 10;
+        activeEnemyHealth = maxHealth;
+
         int enemyDamage = enemyData != null ? enemyData.damage : 1;
         int enemyDefense = enemyData != null ? enemyData.defense : 0;
+
+        // --- HUD ANZEIGEN (Start) ---
+        if (EnemyHUD.Instance != null)
+        {
+            EnemyHUD.Instance.SetupEnemy(enemy.myData, activeEnemyHealth, maxHealth);
+        }
+        // ----------------------------
 
         yield return new WaitForSeconds(0.2f);
 
@@ -104,6 +124,13 @@ public class CombatManager : MonoBehaviour
             // Leben abziehen
             activeEnemyHealth -= dmgToEnemy;
 
+            // --- HUD UPDATE (Angriff Schaden) ---
+            if (EnemyHUD.Instance != null)
+            {
+                EnemyHUD.Instance.UpdateHP(activeEnemyHealth);
+            }
+            // ------------------------------------
+
             if (isCrit) FloatingTextManager.Instance.Show(CombatTextType.CriticalHit, dmgToEnemy.ToString(), enemy.transform.position);
             else FloatingTextManager.Instance.Show(CombatTextType.NormalDamage, dmgToEnemy.ToString(), enemy.transform.position);
 
@@ -114,6 +141,8 @@ public class CombatManager : MonoBehaviour
 
 
             // --- GEGNER ZUG ---
+
+            // DOT (Damage Over Time) Verarbeitung
             int dotDamageTotal = 0;
             for (int i = enemyStatusEffects.Count - 1; i >= 0; i--)
             {
@@ -130,6 +159,14 @@ public class CombatManager : MonoBehaviour
             if (dotDamageTotal > 0)
             {
                 activeEnemyHealth -= dotDamageTotal;
+
+                // --- HUD UPDATE (DOT Schaden) ---
+                if (EnemyHUD.Instance != null)
+                {
+                    EnemyHUD.Instance.UpdateHP(activeEnemyHealth);
+                }
+                // --------------------------------
+
                 yield return StartCoroutine(ShakeAnimation(enemy.transform));
                 yield return new WaitForSeconds(0.3f);
                 if (activeEnemyHealth <= 0) break;
@@ -163,10 +200,17 @@ public class CombatManager : MonoBehaviour
         bool playerWon = PlayerManager.Instance.currentHealth > 0;
         enemyStatusEffects.Clear();
 
+        // --- HUD AUSBLENDEN ---
+        if (EnemyHUD.Instance != null)
+        {
+            EnemyHUD.Instance.HideHUD();
+        }
+        // ----------------------
+
         if (playerWon)
         {
             if (enemyData != null) CheckLoot(enemyData);
-            yield return StartCoroutine(MoveCardBack(player, startEnemyPos, startHeroScale));
+            yield return StartCoroutine(MoveCardBack(player, startEnemyPos, startHeroScale)); // Spieler rückt vor
             ResetCardLayer(player, oldHeroBgOrder, oldHeroIconOrder, oldHeroTextOrder);
             enemy.transform.position = startEnemyPos;
             ResetCardLayer(enemy, oldEnemyBgOrder, oldEnemyIconOrder, oldEnemyTextOrder);
@@ -179,8 +223,13 @@ public class CombatManager : MonoBehaviour
             ResetCardLayer(enemy, oldEnemyBgOrder, oldEnemyIconOrder, oldEnemyTextOrder);
             Debug.Log("Player defeated!");
             PlayerManager.Instance.currentStatusEffects.Clear();
+            // Hier evtl. Game Over Logic
         }
         isFighting = false;
+
+        // Kamera entsperren
+        CameraFollow camScriptUnlock = mainCam.GetComponent<CameraFollow>();
+        if (camScriptUnlock != null) camScriptUnlock.isLocked = false;
     }
 
     IEnumerator MoveCardBack(CardController card, Vector3 targetPos, Vector3 targetScale)

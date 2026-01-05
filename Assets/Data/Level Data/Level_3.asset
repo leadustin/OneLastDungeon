@@ -10,10 +10,15 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 0dfaddde0364bf447a8577ec22858b1e, type: 3}
-  m_Name: Level1
+  m_Name: Level_3
   m_EditorClassIdentifier: Assembly-CSharp::LevelData
-  gridWidth: 3
-  gridHeight: 3
+  levelPrefab: {fileID: 3201877316272076830, guid: 5464e25eebbae9641882e405012f2ecd, type: 3}
+  winCondition: 2
+  respawnCards: 1
+  enemiesToKill: 50
+  emptyCard: {fileID: 11400000, guid: 99fbdd03d9cb3f84cb015b7db9134441, type: 2}
+  gridWidth: 20
+  gridHeight: 20
   goldMultiplier: 1
   enemies:
   - card: {fileID: 11400000, guid: 5782c2140da691e4ca8711b84305739d, type: 2}
