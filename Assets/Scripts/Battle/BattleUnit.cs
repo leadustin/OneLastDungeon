@@ -18,19 +18,6 @@ public class ActiveStatusEffect
 }
 
 [System.Serializable]
-public class RuntimeSkill
-{
-    public SkillTemplate template;
-    public int currentCooldown;
-
-    public RuntimeSkill(SkillTemplate tmpl)
-    {
-        template = tmpl;
-        currentCooldown = tmpl.initialTurnDelay;
-    }
-}
-
-[System.Serializable]
 public class DroppedItem
 {
     public ItemTemplate item;
@@ -61,195 +48,194 @@ public class BattleUnit : MonoBehaviour
     public List<RuntimeSkill> activeSkills = new List<RuntimeSkill>();
     public List<ActiveStatusEffect> activeEffects = new List<ActiveStatusEffect>();
 
-    private UnitUI unitUI;
     private StatsHandler statsHandler;
+    private UnitUI unitUI;
+    private HeroRuntimeData linkedHeroData;
 
-    void Awake()
+    private void Awake()
     {
-        Visuals = GetComponent<UnitVisuals>();
         statsHandler = GetComponent<StatsHandler>();
         unitUI = GetComponent<UnitUI>();
+        Visuals = GetComponent<UnitVisuals>();
     }
 
-    public void Initialize(bool playerTeam)
+    public void Initialize(bool isPlayer)
     {
-        isPlayerTeam = playerTeam;
-        if (statsHandler != null)
+        isPlayerTeam = isPlayer;
+        foreach (var skill in activeSkills)
         {
-            maxHP = statsHandler.GetStatValue(StatType.MaxHealth);
-            currentHP = maxHP;
+            if (skill.template != null)
+                skill.currentCooldown = skill.template.initialTurnDelay;
         }
-        foreach (var skill in activeSkills) skill.currentCooldown = skill.template.initialTurnDelay;
-        activeEffects.Clear();
     }
 
-    // --- NEU: DIESE METHODE LÄDT ALLES AUTOMATISCH ---
     public void SetupHeroFromRuntime(HeroRuntimeData data)
     {
-        if (data == null) return;
-
-        isPlayerTeam = true;
+        linkedHeroData = data;
         unitName = data.heroName;
         currentLevel = data.currentLevel;
-        gameObject.name = "Hero_" + unitName;
-        attackRange = data.heroTemplate.attackRange;
+        isPlayerTeam = true;
 
-        // Visuals
-        if (Visuals != null)
-        {
-            Visuals.SetData(data.heroTemplate.classIcon, data.heroTemplate.deathAnimationFrames);
-            Visuals.FlipOrientation(true);
-        }
+        maxHP = data.GetTotalStat(StatType.MaxHealth);
+        currentHP = maxHP;
 
-        // Stats laden (ALLES AUTOMATISCH PER SCHLEIFE!)
+        activeSkills = data.activeSkills;
+
         if (statsHandler != null)
         {
-            // Wir gehen jeden einzelnen Stat-Typ durch, den es im Spiel gibt
-            foreach (StatType statType in System.Enum.GetValues(typeof(StatType)))
-            {
-                // Wir holen den totalen Wert vom Helden (inkl. Items)
-                float totalVal = data.GetTotalStat(statType);
-
-                // Wir setzen ihn im Kampf-Handler
-                statsHandler.SetBaseStat(statType, totalVal);
-            }
-
-            InitializeBattleStats();
+            statsHandler.SetBaseStat(StatType.Damage, data.GetTotalStat(StatType.Damage));
+            statsHandler.SetBaseStat(StatType.Defense, data.GetTotalStat(StatType.Defense));
         }
 
-        // Skills laden
-        activeSkills.Clear();
-        if (data.heroTemplate.skills != null)
-        {
-            foreach (var skillTmpl in data.heroTemplate.skills)
-                activeSkills.Add(new RuntimeSkill(skillTmpl));
-        }
+        SetupUI();
     }
 
-    // Für Gegner (Nutzt weiterhin das Template)
-    public void SetupEnemy(EnemyTemplate enemyTemplate)
+    public void SetupEnemy(EnemyTemplate template)
     {
-        if (enemyTemplate == null) return;
-
+        unitName = template.unitName;
         isPlayerTeam = false;
-        unitName = enemyTemplate.unitName;
-        gameObject.name = "Enemy_" + unitName;
-        attackRange = enemyTemplate.attackRange;
+        attackRange = template.attackRange;
 
-        if (Visuals != null)
+        float damage = 0;
+        float defense = 0;
+
+        foreach (var stat in template.stats)
         {
-            Visuals.SetData(enemyTemplate.icon, enemyTemplate.deathAnimationFrames);
-            Visuals.FlipOrientation(false);
+            if (stat.type == StatType.MaxHealth) maxHP = stat.value;
+            if (stat.type == StatType.Damage) damage = stat.value;
+            if (stat.type == StatType.Defense) defense = stat.value;
         }
+        currentHP = maxHP;
 
         if (statsHandler != null)
         {
-            if (enemyTemplate.stats != null)
-            {
-                foreach (var stat in enemyTemplate.stats) statsHandler.SetBaseStat(stat.type, stat.value);
-            }
-            InitializeBattleStats();
-        }
-
-        // Loot berechnen
-        xpDropAmount = enemyTemplate.rewards.xpReward;
-        goldDropAmount = Random.Range(enemyTemplate.rewards.minGold, enemyTemplate.rewards.maxGold + 1);
-
-        itemDrops.Clear();
-        if (enemyTemplate.rewards.possibleDrops != null)
-        {
-            foreach (var dropConfig in enemyTemplate.rewards.possibleDrops)
-            {
-                if (Random.value <= dropConfig.dropChance)
-                {
-                    int amount = Random.Range(dropConfig.minAmount, dropConfig.maxAmount + 1);
-                    if (amount > 0 && dropConfig.item != null)
-                    {
-                        itemDrops.Add(new DroppedItem { item = dropConfig.item, amount = amount });
-                    }
-                }
-            }
+            statsHandler.SetBaseStat(StatType.Damage, damage);
+            statsHandler.SetBaseStat(StatType.Defense, defense);
         }
 
         activeSkills.Clear();
-        if (enemyTemplate.skills != null)
+        foreach (var skillTmpl in template.skills)
         {
-            foreach (var skillTmpl in enemyTemplate.skills)
-                if (skillTmpl != null) activeSkills.Add(new RuntimeSkill(skillTmpl));
+            activeSkills.Add(new RuntimeSkill(skillTmpl));
+        }
+
+        if (template.icon != null)
+        {
+            var sr = GetComponentInChildren<SpriteRenderer>();
+            if (sr != null) sr.sprite = template.icon;
+        }
+
+        goldDropAmount = Random.Range(template.rewards.minGold, template.rewards.maxGold);
+        xpDropAmount = template.rewards.xpReward;
+
+        SetupUI();
+    }
+
+    void SetupUI()
+    {
+        if (unitUI != null)
+        {
+            unitUI.SetupUI(this);
+            unitUI.UpdateHealthBar(currentHP, maxHP, true);
         }
     }
 
-    private void InitializeBattleStats()
+    // --- RUNDEN LOGIK (HIER WAR DER FEHLER) ---
+
+    // ÄNDERUNG: Rückgabetyp ist jetzt 'bool' (true = Stunned)
+    public bool ProcessTurnStart()
     {
-        if (statsHandler != null)
+        bool isStunned = false;
+
+        // Status Effekte abarbeiten
+        for (int i = activeEffects.Count - 1; i >= 0; i--)
         {
-            maxHP = statsHandler.GetStatValue(StatType.MaxHealth);
-            currentHP = maxHP;
-            if (unitUI != null) unitUI.UpdateHealthBar(currentHP, maxHP, true);
+            var effect = activeEffects[i];
+
+            // Prüfen ob Betäubt
+            if (effect.type == StatusEffectType.Stun || effect.type == StatusEffectType.Freeze)
+            {
+                isStunned = true;
+            }
+
+            // Schaden oder Heilung
+            if (effect.type == StatusEffectType.Poison || effect.type == StatusEffectType.Burn)
+            {
+                TakeDamage(effect.amount, HitType.Normal, effect.type);
+            }
+            else if (effect.type == StatusEffectType.Regeneration)
+            {
+                Heal(effect.amount);
+            }
+
+            // Dauer reduzieren
+            effect.remainingTurns--;
+            if (effect.remainingTurns <= 0)
+            {
+                activeEffects.RemoveAt(i);
+            }
         }
+
+        return isStunned;
     }
 
     public void ReduceCooldowns()
     {
         foreach (var skill in activeSkills)
-            if (skill.currentCooldown > 0) skill.currentCooldown--;
-    }
-
-    public bool ProcessTurnStart()
-    {
-        bool isStunned = false;
-        List<ActiveStatusEffect> expiredEffects = new List<ActiveStatusEffect>();
-
-        foreach (var effect in activeEffects)
         {
-            switch (effect.type)
-            {
-                case StatusEffectType.Burn: TakeDamage(effect.amount, HitType.Normal, StatusEffectType.Burn); break;
-                case StatusEffectType.Poison: TakeDamage(effect.amount, HitType.Normal, StatusEffectType.Poison); break;
-                case StatusEffectType.Regeneration: Heal(effect.amount); break;
-                case StatusEffectType.Freeze:
-                case StatusEffectType.Stun: isStunned = true; if (unitUI != null) unitUI.SpawnDamageText(0, HitType.Block, StatusEffectType.Stun); break;
-            }
-            effect.remainingTurns--;
-            if (effect.remainingTurns <= 0) expiredEffects.Add(effect);
-        }
-        foreach (var oldEffect in expiredEffects) activeEffects.Remove(oldEffect);
-        return isStunned;
-    }
-
-    public void ApplyEffect(SkillEffectConfig config)
-    {
-        activeEffects.Add(new ActiveStatusEffect(config));
-    }
-
-    public void Heal(float amount)
-    {
-        currentHP += amount;
-        if (currentHP > maxHP) currentHP = maxHP;
-        if (unitUI != null)
-        {
-            unitUI.UpdateHealthBar(currentHP, maxHP, false);
-            unitUI.SpawnDamageText(amount, HitType.Normal);
+            skill.TickCooldown();
         }
     }
 
-    public bool TakeDamage(float dmg, HitType hitType = HitType.Normal, StatusEffectType statusSource = StatusEffectType.None, Sprite skillIcon = null)
+    // --- KAMPF LOGIK ---
+
+    public bool TakeDamage(float dmg, HitType hitType, StatusEffectType statusSource = StatusEffectType.None, Sprite skillIcon = null)
     {
+        if (currentHP <= 0) return true;
+
+        float defense = GetDefenseValue();
+        if (hitType != HitType.Critical && statusSource == StatusEffectType.None)
+        {
+            dmg = Mathf.Max(1, dmg - (defense * 0.5f));
+        }
+
         if (hitType == HitType.Miss)
         {
             if (unitUI != null) unitUI.SpawnDamageText(0, HitType.Miss);
-            return currentHP <= 0;
+            return false;
         }
 
         currentHP -= dmg;
-        if (currentHP <= 0) { currentHP = 0; Die(); }
+        if (currentHP <= 0)
+        {
+            currentHP = 0;
+            Die();
+            return true;
+        }
 
         if (unitUI != null)
         {
             unitUI.UpdateHealthBar(currentHP, maxHP, false);
             unitUI.SpawnDamageText(dmg, hitType, statusSource, skillIcon);
         }
-        return currentHP <= 0;
+        return false;
+    }
+
+    public void Heal(float amount)
+    {
+        currentHP += amount;
+        if (currentHP > maxHP) currentHP = maxHP;
+
+        if (unitUI != null)
+        {
+            unitUI.UpdateHealthBar(currentHP, maxHP, false);
+            unitUI.SpawnDamageText(amount, HitType.Heal);
+        }
+    }
+
+    public void ApplyEffect(SkillEffectConfig config)
+    {
+        activeEffects.Add(new ActiveStatusEffect(config));
     }
 
     private void Die()
@@ -259,11 +245,16 @@ public class BattleUnit : MonoBehaviour
 
         if (unitUI != null)
         {
-            if (unitUI.gameObject != this.gameObject) unitUI.gameObject.SetActive(false);
-            else { unitUI.enabled = false; var c = unitUI.GetComponent<Canvas>(); if (c) c.enabled = false; }
+            if (unitUI.gameObject != this.gameObject)
+                unitUI.gameObject.SetActive(false);
+            else
+            {
+                unitUI.enabled = false;
+                var c = unitUI.GetComponent<Canvas>();
+                if (c) c.enabled = false;
+            }
         }
 
-        // --- LOOT VERGABE ---
         if (!isPlayerTeam && BattlefieldManager.Instance != null)
         {
             BattlefieldManager.Instance.AddLoot(goldDropAmount, xpDropAmount, itemDrops);
@@ -275,10 +266,10 @@ public class BattleUnit : MonoBehaviour
 
     private System.Collections.IEnumerator PerformDeathSequence()
     {
-        yield return StartCoroutine(Visuals.PlayDeathAnimation());
+        if (Visuals != null) yield return StartCoroutine(Visuals.PlayDeathAnimation());
         gameObject.SetActive(false);
     }
 
-    public float GetDamageValue() => statsHandler != null ? statsHandler.GetStatValue(StatType.Damage) : 0;
+    public float GetDamageValue() => statsHandler != null ? statsHandler.GetStatValue(StatType.Damage) : 10;
     public float GetDefenseValue() => statsHandler != null ? statsHandler.GetStatValue(StatType.Defense) : 0;
 }

@@ -1,41 +1,9 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-// --- LOOT STRUKTUREN ---
-[System.Serializable]
-public struct ItemDropConfig
-{
-    public ItemTemplate item;
-    [Range(0f, 1f)] public float dropChance; // 0.3 = 30%
-    public int minAmount;
-    public int maxAmount;
-}
+// WICHTIG: Die Structs (ItemDropConfig, LootConfig, AIConfig) wurden HIER GELÖSCHT.
+// Sie stehen jetzt zentral in GameEnums.cs.
 
-[System.Serializable]
-public struct LootConfig
-{
-    [Header("Garantierte Belohnung")]
-    public int xpReward;        // Fixer Wert
-    public int minGold;         // Von...
-    public int maxGold;         // ...bis
-
-    [Header("Zufällige Drops")]
-    public List<ItemDropConfig> possibleDrops;
-}
-
-// --- ANDERE HELFER ---
-[System.Serializable]
-public struct AIConfig
-{
-    [Range(0f, 1f)] public float aggression;
-    public float skillFrequency;
-    public TargetPriority targetPreference;
-    [Header("Enrage")]
-    public bool hasEnrage;
-    [Range(0, 100)] public float enrageAtHPPercent;
-}
-
-// --- HAUPT KLASSE ---
 [CreateAssetMenu(fileName = "New Enemy", menuName = "RPG/Enemy Template")]
 public class EnemyTemplate : ScriptableObject
 {
@@ -80,17 +48,23 @@ public class EnemyTemplate : ScriptableObject
 
     private void CalculateDerivedStats()
     {
+        // Einfache Vorschau-Berechnung für den Editor
         float dmg = GetStatValue(StatType.Damage);
         float hp = GetStatValue(StatType.MaxHealth);
         float def = GetStatValue(StatType.Defense);
-        calc_EffectiveHealth = hp * (1 + (def / 100f));
+
+        calc_EffectiveHealth = hp * (1 + (def / 100f)); // Grobe Formel
         calc_DPS = dmg;
     }
 
+    // Hilfsmethode um Stats im Editor auszulesen
     private float GetStatValue(StatType type)
     {
         if (stats == null) return 0;
-        foreach (var s in stats) if (s.type == type) return s.value;
+        foreach (var s in stats)
+        {
+            if (s.type == type) return s.value;
+        }
         return 0;
     }
 }

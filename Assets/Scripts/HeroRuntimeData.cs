@@ -20,6 +20,10 @@ public class HeroRuntimeData
     // GÜRTEL (Für den Kampf) - 2 Plätze für Tränke
     public GameItem[] beltSlots = new GameItem[2];
 
+    // --- NEU: SKILL LISTE (Das Gedächtnis für den Kampf) ---
+    public List<RuntimeSkill> activeSkills = new List<RuntimeSkill>();
+    // -------------------------------------------------------
+
     // Konstruktor: Erstellt einen frischen Helden aus dem Template
     public HeroRuntimeData(HeroClassTemplate tmpl, int level)
     {
@@ -27,7 +31,37 @@ public class HeroRuntimeData
         heroName = tmpl.className;
         currentLevel = level;
         xpToNextLevel = CalculateNextLevelXP();
+
+        // Hier könnten wir später Start-Skills laden:
+        // if (tmpl.startingSkills != null) { ... }
     }
+
+    // --- NEU: SKILL METHODEN ---
+
+    // Einen neuen Skill lernen (z.B. durch Buch oder Level Up)
+    public void LearnSkill(SkillTemplate newSkill)
+    {
+        if (newSkill == null) return;
+
+        // Prüfen, ob wir ihn schon haben (keine Duplikate)
+        foreach (var s in activeSkills)
+        {
+            if (s.template == newSkill) return;
+        }
+
+        // Als "RuntimeSkill" verpacken und hinzufügen
+        activeSkills.Add(new RuntimeSkill(newSkill));
+    }
+
+    // Muss am Ende jeder Runde vom BattleManager aufgerufen werden
+    public void TickAllCooldowns()
+    {
+        foreach (var skill in activeSkills)
+        {
+            skill.TickCooldown();
+        }
+    }
+    // ---------------------------
 
     // --- AUSRÜSTUNG LOGIK ---
 
@@ -95,6 +129,6 @@ public class HeroRuntimeData
 
     private int CalculateNextLevelXP()
     {
-        return currentLevel * 100; // Simples Levelsystem
+        return currentLevel * 1000; // Platzhalter-Formel
     }
 }

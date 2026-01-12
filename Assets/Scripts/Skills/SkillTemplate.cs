@@ -30,26 +30,28 @@ public class SkillTemplate : ScriptableObject
     public Sprite icon;
     [TextArea] public string description;
 
+    // --- NEU: ZIELWAHL ---
+    [Header("Ziel-Logik")]
+    [Tooltip("Wen muss ich anklicken, um diesen Skill zu nutzen?")]
+    public SkillTargetMode targetMode = SkillTargetMode.SingleEnemy;
+    // ---------------------
+
     [Header("Runden-Management")]
-    [Tooltip("Verzögerung am Start des Kampfes")]
+    [Tooltip("Verzögerung am Start des Kampfes (Initial Cooldown)")]
     public int initialTurnDelay = 0;
-    [Tooltip("Cooldown nach Benutzung")]
+    [Tooltip("Cooldown nach Benutzung (in Runden)")]
     public int rechargeTurns = 3;
 
     [Header("Schaden & Art")]
     public DamageType damageType = DamageType.Physical;
-    public float damageMultiplier = 1.5f;
+    public float damageMultiplier = 1.5f; // 1.5 = 150% Waffenschaden
+    [Range(0f, 1f)] public float splashDamagePercent = 0.5f;
     public bool isHeal = false;
 
-    [Header("Flächenschaden (AoE)")]
-    [Range(0f, 1f)]
-    public float splashDamagePercent = 0.0f;
-
-    // HIER ist die neue Liste
-    [Header("Zusatz-Effekte")]
-    [Tooltip("Liste aller Statuseffekte, die dieser Skill auslösen kann")]
-    public List<SkillEffectConfig> effects;
-
-    [Header("Optik")]
+    [Header("Visuals")]
     public GameObject vfxPrefab;
+    public string animationName = "Attack"; // Standard Animation Trigger
+
+    [Header("Zusatz-Effekte")]
+    public List<SkillEffectConfig> effects;
 }

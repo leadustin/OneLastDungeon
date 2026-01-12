@@ -1,4 +1,66 @@
 using UnityEngine;
+using System.Collections.Generic;
+
+// --- DATEN STRUKTUREN (Alles hier gesammelt) ---
+
+[System.Serializable]
+public class StatConfig
+{
+    public StatType type;
+    public float value;
+}
+
+[System.Serializable]
+public struct AIConfig
+{
+    [Range(0f, 1f)] public float aggression;
+    public float skillFrequency;
+    public TargetPriority targetPreference;
+    [Header("Enrage")]
+    public bool hasEnrage;
+    [Range(0, 100)] public float enrageAtHPPercent;
+}
+
+[System.Serializable]
+public struct ItemDropConfig
+{
+    public ItemTemplate item;
+    [Range(0f, 1f)] public float dropChance; // 0.3 = 30%
+    public int minAmount;
+    public int maxAmount;
+}
+
+[System.Serializable]
+public struct LootConfig
+{
+    [Header("Garantierte Belohnung")]
+    public int xpReward;
+    public int minGold;
+    public int maxGold;
+
+    [Header("Zufällige Drops")]
+    public List<ItemDropConfig> possibleDrops;
+}
+
+// --- ENUMS ---
+
+public enum HitType
+{
+    Normal,
+    Critical,
+    Miss,
+    Blocked,
+    Heal
+}
+
+public enum TargetPriority
+{
+    Random,
+    LowestHP,
+    HighestHP,
+    PlayerLeader, // Slot 0
+    GlassCannon   // Wenig HP, viel Dmg
+}
 
 public enum ItemRarity
 {
@@ -23,22 +85,21 @@ public enum ItemType
 
 public enum EquipmentSlot
 {
-    None,           // Für Items ohne Slot (Tränke etc.)
-    Head,           // Kopf
-    Shoulders,      // Schulter
-    Chest,          // Brust
-    Bracers,        // Armschiene
-    Gloves,         // Handschuhe
-    Belt,           // Gürtel
-    Legs,           // Beine
-    Feet,           // Füße
-    MainHand,       // Waffe
-    OffHand,        // Schild / Buch
-    Necklace,       // Halskette
-    Ring            // Ring
+    None,
+    Head,
+    Shoulders,
+    Chest,
+    Bracers,
+    Gloves,
+    Belt,
+    Legs,
+    Feet,
+    MainHand,
+    OffHand,
+    Necklace,
+    Ring
 }
 
-// 1. Identität & Rolle
 public enum UnitRank
 {
     Normal,
@@ -48,78 +109,39 @@ public enum UnitRank
 
 public enum UnitRole
 {
-    Tank,           // Viel HP/Def, zieht Aggro
-    GlassCannon,    // Viel Schaden, wenig HP
-    Support,        // Heilt/Bufft
-    Debuffer,       // Schwächt Gegner
-    Balanced        // Allrounder
+    Tank,
+    GlassCannon,
+    Support,
+    Debuffer,
+    Balanced
 }
 
-// 2. STATS (Zusammengeführt: Attribute + Kampfwerte + Resistenzen)
-public enum StatType
-{
-    // --- Attribute (Basiswerte) ---
-    Strength,       // Stärke (Erhöht z.B. Physischen Schaden)
-    Agility,        // Beweglichkeit (Erhöht z.B. Crit / Ausweichen)
-    Intelligence,   // Intelligenz (Erhöht z.B. Magischen Schaden / Mana)
-    Vitality,       // Vitalität (Erhöht HP)
-
-    // --- Ressourcen ---
-    MaxHealth,
-    MaxMana,
-
-    // --- Offensive Kampfwerte ---
-    Damage,
-    AttackSpeed,
-    CritChance,
-    CritMultiplier,
-    ArmorPenetration,
-    Accuracy,
-
-    // --- Defensive Kampfwerte ---
-    Defense,
-    Evasion,
-    LifeLeech,
-
-    // --- Resistenzen (Wichtig für Rüstung & Magie) ---
-    ResistPhysical,
-    ResistFire,
-    ResistIce,
-    ResistPoison,
-    ResistLightning,
-    ResistMagic     // Allgemeine Magieresistenz
-}
-
-// 4. Schadensarten
 public enum DamageType
 {
     Physical,
     Fire,
     Ice,
-    Poison,
     Lightning,
-    True // Ignoriert alles
+    Poison,
+    Arcane,
+    Holy,
+    Shadow
 }
 
-public enum HitType
+public enum StatType
 {
-    Normal,
-    Critical,
-    Miss,
-    Block
+    MaxHealth,
+    MaxMana,
+    Damage,
+    Defense,
+    Speed,
+    CritChance,
+    CritDamage,
+    DodgeChance,
+    Accuracy,
+    BlockChance
 }
 
-// 6. AI Verhalten
-public enum TargetPriority
-{
-    Tank,           // Höchste Bedrohung / Rüstung
-    LowestHP,       // Finisher
-    Random,         // Unberechenbar
-    HighestDPS,     // Tötet den gefährlichsten Spieler
-    Support         // Fokus auf Heiler
-}
-
-// Für das interne Berechnungssystem
 public enum StatModType
 {
     Flat = 100,
@@ -129,8 +151,8 @@ public enum StatModType
 
 public enum AttackRange
 {
-    Melee,  // Nahkampf (läuft hin)
-    Ranged  // Fernkampf (bleibt stehen)
+    Melee,
+    Ranged
 }
 
 public enum StatusEffectType
@@ -146,25 +168,26 @@ public enum StatusEffectType
 
 public enum GridPosition
 {
-    // --- REIHE 1: BLAU (FRONT / TANK) ---
     [InspectorName("Front - Oben (Slot 0)")] Front_Top = 0,
     [InspectorName("Front - Mitte (Slot 1)")] Front_Center = 1,
     [InspectorName("Front - Unten (Slot 2)")] Front_Bottom = 2,
 
-    // --- REIHE 2: GELB (MID / SUPPORT) ---
     [InspectorName("Mitte - Oben (Slot 3)")] Mid_Top = 3,
     [InspectorName("Mitte - Mitte (Slot 4)")] Mid_Center = 4,
     [InspectorName("Mitte - Unten (Slot 5)")] Mid_Bottom = 5,
 
-    // --- REIHE 3: ROT (BACK / RANGE) ---
     [InspectorName("Hinten - Oben (Slot 6)")] Back_Top = 6,
     [InspectorName("Hinten - Mitte (Slot 7)")] Back_Center = 7,
-    [InspectorName("Hinten - Unten (Slot 8)")] Back_Bottom = 8
+    [InspectorName("Hinten - Unten (Slot 8)")] Back_Bottom = 8,
+
+    None = 99
 }
 
-[System.Serializable]
-public struct StatConfig
+public enum SkillTargetMode
 {
-    public StatType type;
-    public float value;
+    [InspectorName("Einzelner Gegner")] SingleEnemy,
+    [InspectorName("Alle Gegner")] AllEnemies,
+    [InspectorName("Selbst")] Self,
+    [InspectorName("Einzelner Verbündeter")] Ally,
+    [InspectorName("Zufälliger Gegner")] RandomEnemy
 }
