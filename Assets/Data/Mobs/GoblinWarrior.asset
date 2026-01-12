@@ -1,0 +1,48 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c0e3b7b6cc7790349ada9776b2eccc87, type: 3}
+  m_Name: GoblinWarrior
+  m_EditorClassIdentifier: Assembly-CSharp::EnemyTemplate
+  enemyID: 1
+  unitName: Goblin
+  icon: {fileID: -430251565816325631, guid: 4c992cd21d9682d41937afc839e4cd94, type: 3}
+  deathAnimationFrames: []
+  rank: 0
+  role: 0
+  attackRange: 0
+  stats:
+  - type: 4
+    value: 80
+  - type: 6
+    value: 5
+  - type: 12
+    value: 2
+  aiBehavior:
+    aggression: 0
+    skillFrequency: 0
+    targetPreference: 0
+    hasEnrage: 0
+    enrageAtHPPercent: 0
+  skills:
+  - {fileID: 0}
+  rewards:
+    xpReward: 66
+    minGold: 12
+    maxGold: 22
+    possibleDrops:
+    - item: {fileID: 11400000, guid: ccb9058331356ee4fb7b55655f89c19c, type: 2}
+      dropChance: 1
+      minAmount: 1
+      maxAmount: 1
+  designSummary: 
+  calc_DPS: 5
+  calc_EffectiveHealth: 81.6

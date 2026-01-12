@@ -6,11 +6,14 @@ EditorBuildSettings:
   serializedVersion: 2
   m_Scenes:
   - enabled: 1
-    path: Assets/Scenes/MainMenu.unity
-    guid: f8e74cc3afa6b874d9c366d5836b99cc
+    path: Assets/Scenes/HubScene.unity
+    guid: 671d5303c4270fb46874b48fc7a02c19
   - enabled: 1
-    path: Assets/Scenes/Dungeon.unity
-    guid: 57b9aa2e43a53604b927eee83a31ed31
+    path: Assets/Scenes/MapScene.unity
+    guid: 7dfd1aa4b3c54504db422f987fbca904
+  - enabled: 1
+    path: Assets/Scenes/BattleScene.unity
+    guid: ceb262908dc10a849b9fc382d0ad99ef
   m_configObjects:
     com.unity.input.settings.actions: {fileID: -944628639613478452, guid: 2bcd2660ca9b64942af0de543d8d7100, type: 3}
   m_UseUCBPForAssetBundles: 0
