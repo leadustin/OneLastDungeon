@@ -15,16 +15,18 @@ MonoBehaviour:
   skillName: Fireball
   icon: {fileID: 5353841184698615464, guid: bbafc7421635d5149b62cd7bf613de32, type: 3}
   description: 
+  targetMode: 0
   initialTurnDelay: 0
   rechargeTurns: 3
   damageType: 1
-  damageMultiplier: 5
-  isHeal: 0
+  damageMultiplier: 1.5
   splashDamagePercent: 0.555
+  isHeal: 0
+  vfxPrefab: {fileID: 2504214343621411470, guid: 3ed0d324122d7b24eaec75c55c74aafc, type: 3}
+  animationName: Attack
   effects:
   - type: 1
     duration: 2
-    amount: 10
+    amount: 5
     chance: 1
     applyToSelf: 0
-  vfxPrefab: {fileID: 2504214343621411470, guid: 3ed0d324122d7b24eaec75c55c74aafc, type: 3}

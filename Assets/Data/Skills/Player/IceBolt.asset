@@ -15,9 +15,13 @@ MonoBehaviour:
   skillName: IceBolt
   icon: {fileID: -629693081087763121, guid: 88b363db783d39e4898e2a035853fb2b, type: 3}
   description: 
+  targetMode: 0
   initialTurnDelay: 0
   rechargeTurns: 3
+  damageType: 2
   damageMultiplier: 2.5
-  isHeal: 0
   splashDamagePercent: 0
+  isHeal: 0
   vfxPrefab: {fileID: 5112403345868107898, guid: 6f34ef0d986e9db4199cf75805f79753, type: 3}
+  animationName: Attack
+  effects: []

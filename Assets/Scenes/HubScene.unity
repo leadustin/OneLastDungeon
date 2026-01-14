@@ -1719,7 +1719,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 3207113791109927183, guid: 71f9597f9be068f4e8f4b8264f679ab2, type: 3}
       propertyPath: m_AnchoredPosition.x
-      value: -0.000030517578
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 3207113791109927183, guid: 71f9597f9be068f4e8f4b8264f679ab2, type: 3}
       propertyPath: m_AnchoredPosition.y
@@ -4108,6 +4108,194 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1525232440}
   m_CullTransparentMesh: 1
+--- !u!1 &1527658225
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1527658227}
+  - component: {fileID: 1527658226}
+  m_Layer: 0
+  m_Name: BalancingLab
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1527658226
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1527658225}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 09198c3c2b4796b4e928a28ebf6d7c61, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::BalancingTool
+  globalResistScaling: 10
+  globalChanceScaling: 20
+  source: 1
+  useAutoScaling: 1
+  manualBasePhysDmg: 15
+  manualElemType: 0
+  manualElemRatio: 0.3
+  manualHeroCount: 4
+  manualEnemyCount: 6
+  baseHP: 100
+  baseArmor: 10
+  baseResist: 5
+  baseCrit: 5
+  baseDodge: 5
+  heroHpGrowth: 12
+  heroDmgGrowth: 3
+  heroArmorGrowth: 2
+  heroResistGrowth: 0.5
+  enemyHpGrowth: 10
+  enemyDmgGrowth: 2
+  enemyArmorGrowth: 1
+  heroParty:
+  - name: Magier
+    template: {fileID: 11400000, guid: 59e91bf584acb2f44aac266f666214fb, type: 2}
+    skill: {fileID: 11400000, guid: 05c249e96aa71694491b1b0a5b0c7ae5, type: 2}
+    equipment:
+    - {fileID: 11400000, guid: 1be1a0aebdb0fb24186d8e5f1bc628e5, type: 2}
+  - name: Magier
+    template: {fileID: 11400000, guid: 59e91bf584acb2f44aac266f666214fb, type: 2}
+    skill: {fileID: 11400000, guid: 05c249e96aa71694491b1b0a5b0c7ae5, type: 2}
+    equipment:
+    - {fileID: 11400000, guid: ccb9058331356ee4fb7b55655f89c19c, type: 2}
+  - name: Magier
+    template: {fileID: 11400000, guid: 59e91bf584acb2f44aac266f666214fb, type: 2}
+    skill: {fileID: 11400000, guid: 05c249e96aa71694491b1b0a5b0c7ae5, type: 2}
+    equipment:
+    - {fileID: 11400000, guid: ccb9058331356ee4fb7b55655f89c19c, type: 2}
+  - name: Magier
+    template: {fileID: 11400000, guid: 59e91bf584acb2f44aac266f666214fb, type: 2}
+    skill: {fileID: 11400000, guid: 05c249e96aa71694491b1b0a5b0c7ae5, type: 2}
+    equipment:
+    - {fileID: 11400000, guid: ccb9058331356ee4fb7b55655f89c19c, type: 2}
+  enemyWave:
+  - {fileID: 11400000, guid: 7f14e8e9e5514fd4b8b7227b3a7dec3d, type: 2}
+  - {fileID: 11400000, guid: 4010badf7c45b0145ae5d633959a1612, type: 2}
+  - {fileID: 11400000, guid: 4010badf7c45b0145ae5d633959a1612, type: 2}
+  - {fileID: 11400000, guid: 7f14e8e9e5514fd4b8b7227b3a7dec3d, type: 2}
+  - {fileID: 11400000, guid: 4010badf7c45b0145ae5d633959a1612, type: 2}
+  - {fileID: 11400000, guid: 4010badf7c45b0145ae5d633959a1612, type: 2}
+  heroLevel: 1
+  enemyLevel: 1
+  simulationRuns: 1000
+  report: "=== HYBRID DAMAGE SWEEP (AMPEL SYSTEM) ===\r\nLvl | Rate | Survivors |
+    Rnds | RATING\r\n-----------------------------------------------------\r\n1  
+    | 100% | 1,0 Heroes  | 12,0 | \U0001F7E1 PYRRHIC (High Casualties)\r\n5   | 100%
+    | 2,0 Heroes  | 11,0 | \U0001F7E2 BALANCED\r\n10  | 100% | 2,0 Heroes  | 10,0
+    | \U0001F7E2 BALANCED\r\n25  | 100% | 1,0 Heroes  | 11,0 | \U0001F7E1 PYRRHIC
+    (High Casualties)\r\n50  | 100% | 2,0 Heroes  | 9,0  | \U0001F7E2 BALANCED\r\n75 
+    | 100% | 2,0 Heroes  | 9,0  | \U0001F7E2 BALANCED\r\n100 | 100% | 2,0 Heroes 
+    | 9,0  | \U0001F7E2 BALANCED\r\n\n=== LEVEL 1 ANALYSIS: \U0001F7E1 PYRRHIC (High
+    Casualties) ===\r\n\n>>> HERO SQUAD <<<\r\n--------------------------------------------------\r\n[Mage] 
+    HP: 100 | Armor: 0\r\n   > DMG VS ENEMY: 16 (14 Phys+2 Fire)\r\n--------------------------------------------------\r\n[Mage] 
+    HP: 100 | Armor: 0\r\n   > DMG VS ENEMY: 15 (14 Phys+2 Ice)\r\n--------------------------------------------------\r\n[Mage] 
+    HP: 100 | Armor: 0\r\n   > DMG VS ENEMY: 15 (14 Phys+2 Ice)\r\n--------------------------------------------------\r\n[Mage] 
+    HP: 100 | Armor: 0\r\n   > DMG VS ENEMY: 15 (14 Phys+2 Ice)\r\n\n>>> ENEMY WAVE
+    <<<\r\n--------------------------------------------------\r\n[Goblin Mage]  HP:
+    100 | Armor: 0\r\n   > DMG VS HERO: 12 (12 Phys)\r\n--------------------------------------------------\r\n[Goblin
+    Mage]  HP: 50 | Armor: 0\r\n   > DMG VS HERO: 8 (8 Phys)\r\n--------------------------------------------------\r\n[Goblin
+    Mage]  HP: 50 | Armor: 0\r\n   > DMG VS HERO: 8 (8 Phys)\r\n--------------------------------------------------\r\n[Goblin
+    Mage]  HP: 100 | Armor: 0\r\n   > DMG VS HERO: 12 (12 Phys)\r\n--------------------------------------------------\r\n[Goblin
+    Mage]  HP: 50 | Armor: 0\r\n   > DMG VS HERO: 8 (8 Phys)\r\n--------------------------------------------------\r\n[Goblin
+    Mage]  HP: 50 | Armor: 0\r\n   > DMG VS HERO: 8 (8 Phys)\r\n\r\n=== LEVEL 5 ANALYSIS:
+    \U0001F7E2 BALANCED ===\r\n\n>>> HERO SQUAD <<<\r\n--------------------------------------------------\r\n[Mage] 
+    HP: 148 | Armor: 8\r\n   > DMG VS ENEMY: 26 (24 Phys+2 Fire)\r\n--------------------------------------------------\r\n[Mage] 
+    HP: 148 | Armor: 8\r\n   > DMG VS ENEMY: 25 (24 Phys+2 Ice)\r\n--------------------------------------------------\r\n[Mage] 
+    HP: 148 | Armor: 8\r\n   > DMG VS ENEMY: 25 (24 Phys+2 Ice)\r\n--------------------------------------------------\r\n[Mage] 
+    HP: 148 | Armor: 8\r\n   > DMG VS ENEMY: 25 (24 Phys+2 Ice)\r\n\n>>> ENEMY WAVE
+    <<<\r\n--------------------------------------------------\r\n[Goblin Mage]  HP:
+    140 | Armor: 4\r\n   > DMG VS HERO: 17 (17 Phys)\r\n--------------------------------------------------\r\n[Goblin
+    Mage]  HP: 90 | Armor: 4\r\n   > DMG VS HERO: 14 (14 Phys)\r\n--------------------------------------------------\r\n[Goblin
+    Mage]  HP: 90 | Armor: 4\r\n   > DMG VS HERO: 14 (14 Phys)\r\n--------------------------------------------------\r\n[Goblin
+    Mage]  HP: 140 | Armor: 4\r\n   > DMG VS HERO: 17 (17 Phys)\r\n--------------------------------------------------\r\n[Goblin
+    Mage]  HP: 90 | Armor: 4\r\n   > DMG VS HERO: 14 (14 Phys)\r\n--------------------------------------------------\r\n[Goblin
+    Mage]  HP: 90 | Armor: 4\r\n   > DMG VS HERO: 14 (14 Phys)\r\n\r\n=== LEVEL 10
+    ANALYSIS: \U0001F7E2 BALANCED ===\r\n\n>>> HERO SQUAD <<<\r\n--------------------------------------------------\r\n[Mage] 
+    HP: 208 | Armor: 18\r\n   > DMG VS ENEMY: 39 (37 Phys+2 Fire)\r\n--------------------------------------------------\r\n[Mage] 
+    HP: 208 | Armor: 18\r\n   > DMG VS ENEMY: 39 (37 Phys+2 Ice)\r\n--------------------------------------------------\r\n[Mage] 
+    HP: 208 | Armor: 18\r\n   > DMG VS ENEMY: 39 (37 Phys+2 Ice)\r\n--------------------------------------------------\r\n[Mage] 
+    HP: 208 | Armor: 18\r\n   > DMG VS ENEMY: 39 (37 Phys+2 Ice)\r\n\n>>> ENEMY WAVE
+    <<<\r\n--------------------------------------------------\r\n[Goblin Mage]  HP:
+    190 | Armor: 9\r\n   > DMG VS HERO: 25 (25 Phys)\r\n--------------------------------------------------\r\n[Goblin
+    Mage]  HP: 140 | Armor: 9\r\n   > DMG VS HERO: 22 (22 Phys)\r\n--------------------------------------------------\r\n[Goblin
+    Mage]  HP: 140 | Armor: 9\r\n   > DMG VS HERO: 22 (22 Phys)\r\n--------------------------------------------------\r\n[Goblin
+    Mage]  HP: 190 | Armor: 9\r\n   > DMG VS HERO: 25 (25 Phys)\r\n--------------------------------------------------\r\n[Goblin
+    Mage]  HP: 140 | Armor: 9\r\n   > DMG VS HERO: 22 (22 Phys)\r\n--------------------------------------------------\r\n[Goblin
+    Mage]  HP: 140 | Armor: 9\r\n   > DMG VS HERO: 22 (22 Phys)\r\n\r\n=== LEVEL
+    25 ANALYSIS: \U0001F7E1 PYRRHIC (High Casualties) ===\r\n\n>>> HERO SQUAD <<<\r\n--------------------------------------------------\r\n[Mage] 
+    HP: 388 | Armor: 48\r\n   > DMG VS ENEMY: 80 (78 Phys+2 Fire)\r\n--------------------------------------------------\r\n[Mage] 
+    HP: 388 | Armor: 48\r\n   > DMG VS ENEMY: 80 (78 Phys+2 Ice)\r\n--------------------------------------------------\r\n[Mage] 
+    HP: 388 | Armor: 48\r\n   > DMG VS ENEMY: 80 (78 Phys+2 Ice)\r\n--------------------------------------------------\r\n[Mage] 
+    HP: 388 | Armor: 48\r\n   > DMG VS ENEMY: 80 (78 Phys+2 Ice)\r\n\n>>> ENEMY WAVE
+    <<<\r\n--------------------------------------------------\r\n[Goblin Mage]  HP:
+    340 | Armor: 24\r\n   > DMG VS HERO: 50 (50 Phys)\r\n--------------------------------------------------\r\n[Goblin
+    Mage]  HP: 290 | Armor: 24\r\n   > DMG VS HERO: 47 (47 Phys)\r\n--------------------------------------------------\r\n[Goblin
+    Mage]  HP: 290 | Armor: 24\r\n   > DMG VS HERO: 47 (47 Phys)\r\n--------------------------------------------------\r\n[Goblin
+    Mage]  HP: 340 | Armor: 24\r\n   > DMG VS HERO: 50 (50 Phys)\r\n--------------------------------------------------\r\n[Goblin
+    Mage]  HP: 290 | Armor: 24\r\n   > DMG VS HERO: 47 (47 Phys)\r\n--------------------------------------------------\r\n[Goblin
+    Mage]  HP: 290 | Armor: 24\r\n   > DMG VS HERO: 47 (47 Phys)\r\n\r\n=== LEVEL
+    50 ANALYSIS: \U0001F7E2 BALANCED ===\r\n\n>>> HERO SQUAD <<<\r\n--------------------------------------------------\r\n[Mage] 
+    HP: 688 | Armor: 98\r\n   > DMG VS ENEMY: 148 (146 Phys+2 Fire)\r\n--------------------------------------------------\r\n[Mage] 
+    HP: 688 | Armor: 98\r\n   > DMG VS ENEMY: 148 (146 Phys+2 Ice)\r\n--------------------------------------------------\r\n[Mage] 
+    HP: 688 | Armor: 98\r\n   > DMG VS ENEMY: 148 (146 Phys+2 Ice)\r\n--------------------------------------------------\r\n[Mage] 
+    HP: 688 | Armor: 98\r\n   > DMG VS ENEMY: 148 (146 Phys+2 Ice)\r\n\n>>> ENEMY
+    WAVE <<<\r\n--------------------------------------------------\r\n[Goblin Mage] 
+    HP: 590 | Armor: 49\r\n   > DMG VS HERO: 92 (92 Phys)\r\n--------------------------------------------------\r\n[Goblin
+    Mage]  HP: 540 | Armor: 49\r\n   > DMG VS HERO: 89 (89 Phys)\r\n--------------------------------------------------\r\n[Goblin
+    Mage]  HP: 540 | Armor: 49\r\n   > DMG VS HERO: 89 (89 Phys)\r\n--------------------------------------------------\r\n[Goblin
+    Mage]  HP: 590 | Armor: 49\r\n   > DMG VS HERO: 92 (92 Phys)\r\n--------------------------------------------------\r\n[Goblin
+    Mage]  HP: 540 | Armor: 49\r\n   > DMG VS HERO: 89 (89 Phys)\r\n--------------------------------------------------\r\n[Goblin
+    Mage]  HP: 540 | Armor: 49\r\n   > DMG VS HERO: 89 (89 Phys)\r\n\r\n=== LEVEL
+    75 ANALYSIS: \U0001F7E2 BALANCED ===\r\n\n>>> HERO SQUAD <<<\r\n--------------------------------------------------\r\n[Mage] 
+    HP: 988 | Armor: 148\r\n   > DMG VS ENEMY: 216 (214 Phys+2 Fire)\r\n--------------------------------------------------\r\n[Mage] 
+    HP: 988 | Armor: 148\r\n   > DMG VS ENEMY: 216 (214 Phys+2 Ice)\r\n--------------------------------------------------\r\n[Mage] 
+    HP: 988 | Armor: 148\r\n   > DMG VS ENEMY: 216 (214 Phys+2 Ice)\r\n--------------------------------------------------\r\n[Mage] 
+    HP: 988 | Armor: 148\r\n   > DMG VS ENEMY: 216 (214 Phys+2 Ice)\r\n\n>>> ENEMY
+    WAVE <<<\r\n--------------------------------------------------\r\n[Goblin Mage] 
+    HP: 840 | Armor: 74\r\n   > DMG VS HERO: 134 (134 Phys)\r\n--------------------------------------------------\r\n[Goblin
+    Mage]  HP: 790 | Armor: 74\r\n   > DMG VS HERO: 130 (130 Phys)\r\n--------------------------------------------------\r\n[Goblin
+    Mage]  HP: 790 | Armor: 74\r\n   > DMG VS HERO: 130 (130 Phys)\r\n--------------------------------------------------\r\n[Goblin
+    Mage]  HP: 840 | Armor: 74\r\n   > DMG VS HERO: 134 (134 Phys)\r\n--------------------------------------------------\r\n[Goblin
+    Mage]  HP: 790 | Armor: 74\r\n   > DMG VS HERO: 130 (130 Phys)\r\n--------------------------------------------------\r\n[Goblin
+    Mage]  HP: 790 | Armor: 74\r\n   > DMG VS HERO: 130 (130 Phys)\r\n\r\n=== LEVEL
+    100 ANALYSIS: \U0001F7E2 BALANCED ===\r\n\n>>> HERO SQUAD <<<\r\n--------------------------------------------------\r\n[Mage] 
+    HP: 1288 | Armor: 198\r\n   > DMG VS ENEMY: 285 (283 Phys+2 Fire)\r\n--------------------------------------------------\r\n[Mage] 
+    HP: 1288 | Armor: 198\r\n   > DMG VS ENEMY: 284 (283 Phys+2 Ice)\r\n--------------------------------------------------\r\n[Mage] 
+    HP: 1288 | Armor: 198\r\n   > DMG VS ENEMY: 284 (283 Phys+2 Ice)\r\n--------------------------------------------------\r\n[Mage] 
+    HP: 1288 | Armor: 198\r\n   > DMG VS ENEMY: 284 (283 Phys+2 Ice)\r\n\n>>> ENEMY
+    WAVE <<<\r\n--------------------------------------------------\r\n[Goblin Mage] 
+    HP: 1090 | Armor: 99\r\n   > DMG VS HERO: 175 (175 Phys)\r\n--------------------------------------------------\r\n[Goblin
+    Mage]  HP: 1040 | Armor: 99\r\n   > DMG VS HERO: 172 (172 Phys)\r\n--------------------------------------------------\r\n[Goblin
+    Mage]  HP: 1040 | Armor: 99\r\n   > DMG VS HERO: 172 (172 Phys)\r\n--------------------------------------------------\r\n[Goblin
+    Mage]  HP: 1090 | Armor: 99\r\n   > DMG VS HERO: 175 (175 Phys)\r\n--------------------------------------------------\r\n[Goblin
+    Mage]  HP: 1040 | Armor: 99\r\n   > DMG VS HERO: 172 (172 Phys)\r\n--------------------------------------------------\r\n[Goblin
+    Mage]  HP: 1040 | Armor: 99\r\n   > DMG VS HERO: 172 (172 Phys)\r\n\r\n"
+--- !u!4 &1527658227
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1527658225}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 704.35815, y: 627.9116, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1577658177
 GameObject:
   m_ObjectHideFlags: 0
@@ -6420,3 +6608,4 @@ SceneRoots:
   - {fileID: 1821188581}
   - {fileID: 1342652034}
   - {fileID: 980913191}
+  - {fileID: 1527658227}

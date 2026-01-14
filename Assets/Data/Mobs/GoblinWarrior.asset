@@ -20,29 +20,22 @@ MonoBehaviour:
   role: 0
   attackRange: 0
   stats:
-  - type: 4
-    value: 80
-  - type: 6
+  - type: 0
+    value: 60
+  - type: 2
     value: 5
-  - type: 12
-    value: 2
   aiBehavior:
     aggression: 0
     skillFrequency: 0
     targetPreference: 0
     hasEnrage: 0
     enrageAtHPPercent: 0
-  skills:
-  - {fileID: 0}
+  skills: []
   rewards:
     xpReward: 66
     minGold: 12
     maxGold: 22
-    possibleDrops:
-    - item: {fileID: 11400000, guid: ccb9058331356ee4fb7b55655f89c19c, type: 2}
-      dropChance: 1
-      minAmount: 1
-      maxAmount: 1
+    possibleDrops: []
   designSummary: 
   calc_DPS: 5
-  calc_EffectiveHealth: 81.6
+  calc_EffectiveHealth: 60

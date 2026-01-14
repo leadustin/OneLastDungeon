@@ -1,7 +1,7 @@
 using UnityEngine;
 using System.Collections.Generic;
 
-// --- DATEN STRUKTUREN (Alles hier gesammelt) ---
+// --- DATEN STRUKTUREN ---
 
 [System.Serializable]
 public class StatConfig
@@ -25,7 +25,7 @@ public struct AIConfig
 public struct ItemDropConfig
 {
     public ItemTemplate item;
-    [Range(0f, 1f)] public float dropChance; // 0.3 = 30%
+    [Range(0f, 1f)] public float dropChance;
     public int minAmount;
     public int maxAmount;
 }
@@ -58,64 +58,30 @@ public enum TargetPriority
     Random,
     LowestHP,
     HighestHP,
-    PlayerLeader, // Slot 0
-    GlassCannon   // Wenig HP, viel Dmg
+    PlayerLeader,
+    GlassCannon
 }
 
 public enum ItemRarity
 {
-    Trash,      // Grey
-    Common,     // White
-    Fine,       // Blue
-    Masterwork, // Green
-    Rare,       // Yellow
-    Exotic,     // Orange
-    Legendary   // Purple
+    Trash, Common, Fine, Masterwork, Rare, Exotic, Legendary
 }
 
 public enum ItemType
 {
-    Weapon,
-    Armor,
-    Jewelry,
-    Consumable,
-    Material,
-    Quest
+    Weapon, Armor, Jewelry, Consumable, Material, Quest
 }
 
 public enum EquipmentSlot
 {
-    None,
-    Head,
-    Shoulders,
-    Chest,
-    Bracers,
-    Gloves,
-    Belt,
-    Legs,
-    Feet,
-    MainHand,
-    OffHand,
-    Necklace,
-    Ring
+    None, Head, Shoulders, Chest, Bracers, Gloves, Belt, Legs, Feet, MainHand, OffHand, Necklace, Ring
 }
 
-public enum UnitRank
-{
-    Normal,
-    Elite,
-    Boss
-}
+public enum UnitRank { Normal, Elite, Boss }
 
-public enum UnitRole
-{
-    Tank,
-    GlassCannon,
-    Support,
-    Debuffer,
-    Balanced
-}
+public enum UnitRole { Tank, GlassCannon, Support, Debuffer, Balanced }
 
+// NEU: Schadensarten für das Unified System
 public enum DamageType
 {
     Physical,
@@ -130,30 +96,46 @@ public enum DamageType
 
 public enum StatType
 {
+    // --- BASIS ---
     MaxHealth,
     MaxMana,
-    Damage,
-    Defense,
-    Speed,
+
+    // --- OFFENSIV (PHYSISCH) ---
+    PhysicalDamage,   // Ehemals "Damage". Das ist der Basis-Schwert-Schaden.
     CritChance,
     CritDamage,
-    DodgeChance,
+    Speed,
     Accuracy,
-    BlockChance
+
+    // --- OFFENSIV (ELEMENTAR - BONUS) ---
+    // Das hat dir gefehlt! Jetzt kannst du es auf Items auswählen.
+    FireDamage,
+    IceDamage,
+    LightningDamage,
+    PoisonDamage,
+    ArcaneDamage,
+    HolyDamage,
+    ShadowDamage,
+
+    // --- DEFENSIV (Unified System) ---
+    Armor,            // Hilft gegen PhysicalDamage
+    FireResist,       // Hilft gegen FireDamage
+    IceResist,
+    LightningResist,
+    PoisonResist,
+    ArcaneResist,
+    HolyResist,
+    ShadowResist,
+
+    // --- SEKUNDÄR ---
+    DodgeChance,
+    BlockChance,
+    StatusResist
 }
 
-public enum StatModType
-{
-    Flat = 100,
-    PercentAdd = 200,
-    PercentMult = 300
-}
+public enum StatModType { Flat = 100, PercentAdd = 200, PercentMult = 300 }
 
-public enum AttackRange
-{
-    Melee,
-    Ranged
-}
+public enum AttackRange { Melee, Ranged }
 
 public enum StatusEffectType
 {
@@ -168,26 +150,13 @@ public enum StatusEffectType
 
 public enum GridPosition
 {
-    [InspectorName("Front - Oben (Slot 0)")] Front_Top = 0,
-    [InspectorName("Front - Mitte (Slot 1)")] Front_Center = 1,
-    [InspectorName("Front - Unten (Slot 2)")] Front_Bottom = 2,
-
-    [InspectorName("Mitte - Oben (Slot 3)")] Mid_Top = 3,
-    [InspectorName("Mitte - Mitte (Slot 4)")] Mid_Center = 4,
-    [InspectorName("Mitte - Unten (Slot 5)")] Mid_Bottom = 5,
-
-    [InspectorName("Hinten - Oben (Slot 6)")] Back_Top = 6,
-    [InspectorName("Hinten - Mitte (Slot 7)")] Back_Center = 7,
-    [InspectorName("Hinten - Unten (Slot 8)")] Back_Bottom = 8,
-
+    Front_Top = 0, Front_Center = 1, Front_Bottom = 2,
+    Mid_Top = 3, Mid_Center = 4, Mid_Bottom = 5,
+    Back_Top = 6, Back_Center = 7, Back_Bottom = 8,
     None = 99
 }
 
 public enum SkillTargetMode
 {
-    [InspectorName("Einzelner Gegner")] SingleEnemy,
-    [InspectorName("Alle Gegner")] AllEnemies,
-    [InspectorName("Selbst")] Self,
-    [InspectorName("Einzelner Verbündeter")] Ally,
-    [InspectorName("Zufälliger Gegner")] RandomEnemy
+    SingleEnemy, AllEnemies, Self, Ally, RandomEnemy
 }

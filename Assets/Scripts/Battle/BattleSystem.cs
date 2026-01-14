@@ -20,9 +20,6 @@ public class BattleSystem : MonoBehaviour
     private List<BattleUnit> enemyUnits;
     private RuntimeSkill selectedSkill;
 
-    private bool isPaused = false;
-    private Coroutine battleCoroutine;
-
     void Awake() { Instance = this; }
 
     public void StartBattle(BattleUnit player, List<BattleUnit> enemies)
@@ -30,12 +27,15 @@ public class BattleSystem : MonoBehaviour
         playerUnit = player;
         enemyUnits = enemies;
 
+        // Reset für neuen Kampf
         playerUnit.Initialize(true);
         foreach (var e in enemies) e.Initialize(false);
 
         if (BattlefieldManager.Instance != null) BattlefieldManager.Instance.ToggleSlotVisuals(true);
+
         state = BattleState.SETUP;
         if (startBattleButton != null) startBattleButton.SetActive(true);
+
         SpawnSkillButtons();
     }
 
@@ -43,269 +43,248 @@ public class BattleSystem : MonoBehaviour
     {
         if (state != BattleState.SETUP) return;
         if (startBattleButton != null) startBattleButton.SetActive(false);
+
         if (BattlefieldManager.Instance != null) BattlefieldManager.Instance.ToggleSlotVisuals(false);
 
-        StartCoroutine(StartAutoBattle());
+        StartCoroutine(BattleRoutine());
     }
 
-    IEnumerator StartAutoBattle()
+    IEnumerator BattleRoutine()
     {
         state = BattleState.START;
-        yield return new WaitForSeconds(0.5f);
-        state = BattleState.AUTO_BATTLE;
-        battleCoroutine = StartCoroutine(BattleLoop());
-    }
 
-    IEnumerator BattleLoop()
-    {
-        while (state == BattleState.AUTO_BATTLE || state == BattleState.TARGETING)
+        while (state != BattleState.WON && state != BattleState.LOST)
         {
-            // --- 1. SPIELER ZUG ---
-            playerUnit.ReduceCooldowns();
-            UpdateSkillButtons();
+            // --- 1. SPIELER RUNDE ---
+            yield return StartCoroutine(PlayerTurn());
+            if (CheckBattleOver()) break;
 
-            bool playerIsStunned = playerUnit.ProcessTurnStart();
-            if (playerUnit.currentHP <= 0) { CheckBattleOver(); yield break; } // DoT Tod Check
-
-            if (playerIsStunned)
-            {
-                yield return new WaitForSeconds(1.0f);
-            }
-            else
-            {
-                float waitTimer = 0f;
-                while (waitTimer < 1.0f)
-                {
-                    if (isPaused) yield return null;
-                    else { waitTimer += Time.deltaTime; yield return null; }
-                }
-
-                if (!isPaused) yield return StartCoroutine(PerformAutoAttack());
-                else while (isPaused) yield return null;
-            }
-
-            // --- 2. GEGNER ZUG ---
+            // --- 2. GEGNER RUNDE ---
             yield return StartCoroutine(EnemyTurn());
-
             if (CheckBattleOver()) break;
         }
+
+        EndBattle();
     }
 
-    IEnumerator PerformAutoAttack()
+    IEnumerator PlayerTurn()
     {
-        BattleUnit target = GetTargetEnemy();
-        if (target != null)
+        bool playerStunned = playerUnit.ProcessTurnStart();
+        playerUnit.ReduceCooldowns();
+        RefreshSkillButtons();
+
+        if (playerUnit.currentHP <= 0) { state = BattleState.LOST; yield break; }
+        if (playerStunned)
         {
-            if (playerUnit.Visuals != null) yield return StartCoroutine(playerUnit.Visuals.FocusAttacker(true));
+            Debug.Log("Spieler ist betäubt und setzt aus!");
+            yield return new WaitForSeconds(1f);
+            yield break;
+        }
 
-            if (playerUnit.attackRange == AttackRange.Melee && playerUnit.Visuals != null)
-                yield return StartCoroutine(playerUnit.Visuals.MoveToTarget(target.transform.position));
-            else
-                yield return new WaitForSeconds(0.2f);
+        state = BattleState.TARGETING;
+        selectedSkill = null;
 
-            float dmg = playerUnit.GetDamageValue();
-            DealDamageTo(target, dmg, null); // Auto Attack = Kein Skill
-
-            yield return new WaitForSeconds(0.3f);
-
-            if (playerUnit.attackRange == AttackRange.Melee && playerUnit.Visuals != null)
-                yield return StartCoroutine(playerUnit.Visuals.ReturnToStart());
-
-            if (playerUnit.Visuals != null) yield return StartCoroutine(playerUnit.Visuals.FocusAttacker(false));
+        while (state == BattleState.TARGETING)
+        {
+            yield return null;
         }
     }
 
     IEnumerator EnemyTurn()
     {
-        yield return new WaitForSeconds(0.5f);
-
         foreach (var enemy in enemyUnits)
         {
             if (enemy.currentHP <= 0) continue;
 
+            bool enemyStunned = enemy.ProcessTurnStart();
             enemy.ReduceCooldowns();
-            bool enemyIsStunned = enemy.ProcessTurnStart();
-            if (enemyIsStunned) { yield return new WaitForSeconds(0.5f); continue; }
 
-            RuntimeSkill chosenSkill = null;
-            var readySkills = enemy.activeSkills.Where(s => s.currentCooldown <= 0).ToList();
-            if (readySkills.Count > 0 && Random.value < 0.5f) chosenSkill = readySkills[Random.Range(0, readySkills.Count)];
-
-            if (enemy.Visuals != null) yield return StartCoroutine(enemy.Visuals.FocusAttacker(true));
-
-            if (chosenSkill != null) // SKILL
+            if (enemy.currentHP <= 0) continue;
+            if (enemyStunned)
             {
-                if (enemy.attackRange == AttackRange.Melee && enemy.Visuals != null)
-                    yield return StartCoroutine(enemy.Visuals.MoveToTarget(playerUnit.transform.position));
-                else
-                    yield return new WaitForSeconds(0.5f);
-
-                float baseDmg = enemy.GetDamageValue();
-                float skillDmg = baseDmg * chosenSkill.template.damageMultiplier;
-
-                DealDamageTo(playerUnit, skillDmg, chosenSkill); // Skill übergeben!
-                chosenSkill.currentCooldown = chosenSkill.template.rechargeTurns;
-
                 yield return new WaitForSeconds(0.5f);
-                if (enemy.attackRange == AttackRange.Melee && enemy.Visuals != null)
-                    yield return StartCoroutine(enemy.Visuals.ReturnToStart());
+                continue;
             }
-            else // NORMALER ANGRIFF
+
+            RuntimeSkill enemySkill = enemy.activeSkills.FirstOrDefault(s => s.IsReady());
+            if (enemySkill == null && enemy.activeSkills.Count > 0) enemySkill = enemy.activeSkills[0];
+
+            if (enemySkill != null)
             {
-                if (enemy.attackRange == AttackRange.Melee && enemy.Visuals != null)
-                    yield return StartCoroutine(enemy.Visuals.MoveToTarget(playerUnit.transform.position));
-                else
-                    yield return new WaitForSeconds(0.3f);
-
-                DealDamageTo(playerUnit, enemy.GetDamageValue(), null);
-
-                yield return new WaitForSeconds(0.3f);
-                if (enemy.attackRange == AttackRange.Melee && enemy.Visuals != null)
-                    yield return StartCoroutine(enemy.Visuals.ReturnToStart());
+                yield return StartCoroutine(ExecuteSkill(enemy, playerUnit, enemySkill));
+            }
+            else
+            {
+                yield return new WaitForSeconds(0.5f);
             }
 
-            if (enemy.Visuals != null) yield return StartCoroutine(enemy.Visuals.FocusAttacker(false));
+            if (playerUnit.currentHP <= 0) { state = BattleState.LOST; break; }
         }
     }
 
-    // --- UI & INPUT ---
-    void SpawnSkillButtons()
+    public void OnSkillButtonClicked(RuntimeSkill skill)
     {
-        foreach (Transform child in skillButtonContainer) Destroy(child.gameObject);
-        foreach (var skill in playerUnit.activeSkills) CreateButton(skill);
-    }
+        if (state != BattleState.TARGETING) return;
+        if (!skill.IsReady()) return;
 
-    void CreateButton(RuntimeSkill skill)
-    {
-        GameObject go = Instantiate(skillButtonPrefab, skillButtonContainer);
-        SkillButton btnScript = go.GetComponent<SkillButton>();
-        btnScript.Setup(skill, OnSkillClicked);
-    }
-
-    void UpdateSkillButtons()
-    {
-        SkillButton[] buttons = skillButtonContainer.GetComponentsInChildren<SkillButton>();
-        foreach (var btn in buttons) btn.UpdateState();
-    }
-
-    void OnSkillClicked(RuntimeSkill skill)
-    {
-        if (playerUnit.currentHP <= 0) return;
-        if (state != BattleState.AUTO_BATTLE && state != BattleState.TARGETING) return;
-        isPaused = true;
-        state = BattleState.TARGETING;
         selectedSkill = skill;
+
+        if (skill.template.targetMode == SkillTargetMode.AllEnemies)
+        {
+            StartCoroutine(PerformPlayerMove(null));
+        }
+        else if (skill.template.targetMode == SkillTargetMode.Self)
+        {
+            StartCoroutine(PerformPlayerMove(playerUnit));
+        }
+        else
+        {
+            var target = GetTargetEnemy();
+            if (target != null) StartCoroutine(PerformPlayerMove(target));
+        }
     }
 
-    void Update()
+    IEnumerator PerformPlayerMove(BattleUnit target)
     {
-        if (state == BattleState.TARGETING)
-        {
-            if (Input.GetMouseButtonDown(1)) CancelTargeting();
-            if (Input.GetMouseButtonDown(0))
-            {
-                Vector2 mousePos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
-                RaycastHit2D hit = Physics2D.Raycast(mousePos, Vector2.zero);
+        state = BattleState.AUTO_BATTLE;
+        yield return StartCoroutine(ExecuteSkill(playerUnit, target, selectedSkill));
+        selectedSkill.OnUse();
+    }
 
-                if (hit.collider != null)
+    // --- KERN-LOGIK: HYBRID SCHADEN ---
+    IEnumerator ExecuteSkill(BattleUnit source, BattleUnit mainTarget, RuntimeSkill skill)
+    {
+        // 1. Visuelle Bewegung
+        if (source.Visuals != null && skill.template.targetMode != SkillTargetMode.Self)
+        {
+            Vector3 targetPos = (mainTarget != null) ? mainTarget.transform.position : source.transform.position;
+            yield return StartCoroutine(source.Visuals.MoveToTarget(targetPos));
+        }
+
+        yield return new WaitForSeconds(0.2f);
+
+        // 2. Ziel-Erfassung
+        List<BattleUnit> targets = new List<BattleUnit>();
+
+        if (skill.template.targetMode == SkillTargetMode.AllEnemies)
+        {
+            targets.AddRange(enemyUnits.Where(e => e.currentHP > 0));
+        }
+        else if (skill.template.targetMode == SkillTargetMode.Self)
+        {
+            targets.Add(source);
+        }
+        else if (mainTarget != null)
+        {
+            targets.Add(mainTarget);
+            if (skill.template.splashDamagePercent > 0)
+            {
+                var neighbors = GetNeighbors(mainTarget);
+                targets.AddRange(neighbors);
+            }
+        }
+
+        // 3. Schadensberechnung
+
+        // A) Basis-Schaden (Skaliert mit PhysicalDamage * Skill Multiplier)
+        // Wir nutzen PhysicalDamage als Basis-Attribut für Waffen/Angriffe
+        float baseDmg = source.GetRawStat(StatType.PhysicalDamage) * skill.template.damageMultiplier;
+
+        foreach (var target in targets)
+        {
+            // Sonderfall: Heilung (Wenn Skill Typ Holy ist & Ziel Self/Ally)
+            if (skill.template.damageType == DamageType.Holy && skill.template.targetMode == SkillTargetMode.Self)
+            {
+                target.Heal(baseDmg);
+                continue;
+            }
+
+            // B) Splash Berechnung
+            float splashMult = 1f;
+            if (target != mainTarget && skill.template.splashDamagePercent > 0)
+            {
+                splashMult = skill.template.splashDamagePercent;
+            }
+
+            // C) Crit Check (Gilt für alle Schadensarten dieses Angriffs)
+            HitType hitType = HitType.Normal;
+            float critRating = source.GetRawStat(StatType.CritChance);
+            if (Random.value < CombatMath.CalculateChance(critRating, source.currentLevel))
+            {
+                hitType = HitType.Critical;
+            }
+
+            // --- HYBRID DAMAGE ANWENDUNG ---
+
+            // 1. Haupt-Schaden anwenden (Basis * Splash)
+            // Der Typ wird vom Skill bestimmt (z.B. Fireball -> Fire, Sword -> Physical)
+            target.TakeDamage(baseDmg * splashMult, hitType, source.currentLevel, skill.template.damageType);
+
+            // 2. Zusätzlichen Elementar-Schaden anwenden (Bonus-Stats)
+            // Wenn der Angreifer z.B. "+10 Fire Damage" auf der Waffe hat
+            foreach (DamageType dt in System.Enum.GetValues(typeof(DamageType)))
+            {
+                if (dt == DamageType.Physical) continue; // Physical ist schon im BaseDmg enthalten
+
+                // Finde den passenden offensiven Stat (z.B. Fire -> FireDamage)
+                StatType offensiveStat = GetOffensiveStatFor(dt);
+                float elemDmg = source.GetRawStat(offensiveStat);
+
+                if (elemDmg > 0)
                 {
-                    BattleUnit target = hit.collider.GetComponent<BattleUnit>();
-                    if (target != null && !target.isPlayerTeam && target.currentHP > 0)
+                    // Bonus-Schaden wird auch vom Skill-Multi beeinflusst (optional, aber fair)
+                    float finalElem = elemDmg * skill.template.damageMultiplier * splashMult;
+
+                    // Wendet den Schaden an (Erzeugt separate Schadenszahl)
+                    target.TakeDamage(finalElem, hitType, source.currentLevel, dt);
+                }
+            }
+
+            // D) Effekte & VFX
+            if (skill.template.effects != null)
+            {
+                foreach (var effectConfig in skill.template.effects)
+                {
+                    if (Random.value <= effectConfig.chance)
                     {
-                        StartCoroutine(ExecuteSkillAndResume(target));
+                        BattleUnit effectTarget = effectConfig.applyToSelf ? source : target;
+                        effectTarget.ApplyEffect(effectConfig);
                     }
                 }
             }
-        }
-    }
 
-    void CancelTargeting()
-    {
-        isPaused = false;
-        state = BattleState.AUTO_BATTLE;
-        selectedSkill = null;
-    }
-
-    IEnumerator ExecuteSkillAndResume(BattleUnit mainTarget)
-    {
-        state = BattleState.AUTO_BATTLE;
-
-        if (playerUnit.currentHP <= 0) { selectedSkill = null; isPaused = false; yield break; }
-        RuntimeSkill currentSkill = selectedSkill; // LOKALE KOPIE
-        if (currentSkill == null) yield break;
-
-        if (playerUnit.Visuals != null) yield return StartCoroutine(playerUnit.Visuals.FocusAttacker(true));
-
-        if (playerUnit.attackRange == AttackRange.Melee && playerUnit.Visuals != null)
-            yield return StartCoroutine(playerUnit.Visuals.MoveToTarget(mainTarget.transform.position));
-        else
-            yield return new WaitForSeconds(0.2f);
-
-        float dmg = playerUnit.GetDamageValue() * currentSkill.template.damageMultiplier;
-
-        // HAUPTZIEL
-        DealDamageTo(mainTarget, dmg, currentSkill);
-
-        // AOE
-        if (currentSkill.template.splashDamagePercent > 0)
-        {
-            foreach (var neighbor in GetNeighbors(mainTarget))
+            if (skill.template.vfxPrefab != null)
             {
-                DealDamageTo(neighbor, dmg * currentSkill.template.splashDamagePercent, currentSkill);
+                Instantiate(skill.template.vfxPrefab, target.transform.position, Quaternion.identity);
             }
         }
 
-        currentSkill.currentCooldown = currentSkill.template.rechargeTurns;
-        UpdateSkillButtons();
         yield return new WaitForSeconds(0.5f);
 
-        if (playerUnit.attackRange == AttackRange.Melee && playerUnit.Visuals != null)
-            yield return StartCoroutine(playerUnit.Visuals.ReturnToStart());
-
-        if (playerUnit.Visuals != null) yield return StartCoroutine(playerUnit.Visuals.FocusAttacker(false));
-
-        selectedSkill = null;
-        isPaused = false;
+        if (source.Visuals != null)
+        {
+            yield return StartCoroutine(source.Visuals.ReturnToStart());
+        }
     }
 
-    // --- DAMAGE LOGIC ---
-
-    void DealDamageTo(BattleUnit target, float rawDmg, RuntimeSkill sourceSkill = null)
+    void SpawnSkillButtons()
     {
-        // 1. Miss
-        if (Random.value < 0.10f) { target.TakeDamage(0, HitType.Miss); return; }
+        foreach (Transform child in skillButtonContainer) Destroy(child.gameObject);
 
-        // 2. Crit
-        bool isCrit = Random.value < 0.20f;
-        float finalDmg = isCrit ? rawDmg * 1.5f : rawDmg;
-        HitType type = isCrit ? HitType.Critical : HitType.Normal;
-
-        // 3. Defense
-        float def = target.GetDefenseValue();
-        finalDmg = Mathf.Max(finalDmg - def, 1);
-
-        Sprite icon = (sourceSkill != null && sourceSkill.template != null) ? sourceSkill.template.icon : null;
-
-        // 4. Anwenden & Check Death
-        bool isDead = target.TakeDamage(finalDmg, type, StatusEffectType.None, icon);
-
-        // 5. Effekte
-        if (sourceSkill != null && sourceSkill.template.effects != null)
+        foreach (var skill in playerUnit.activeSkills)
         {
-            foreach (var effectConfig in sourceSkill.template.effects)
-            {
-                if (Random.value <= effectConfig.chance)
-                {
-                    BattleUnit effectTarget = effectConfig.applyToSelf ? playerUnit : target;
-                    effectTarget.ApplyEffect(effectConfig);
-                }
-            }
+            GameObject go = Instantiate(skillButtonPrefab, skillButtonContainer);
+            SkillButton btn = go.GetComponent<SkillButton>();
+            btn.Setup(skill, OnSkillButtonClicked);
         }
+    }
 
-        // 6. VFX
-        if (sourceSkill != null && sourceSkill.template.vfxPrefab != null)
+    void RefreshSkillButtons()
+    {
+        foreach (Transform child in skillButtonContainer)
         {
-            Instantiate(sourceSkill.template.vfxPrefab, target.transform.position, Quaternion.identity);
+            SkillButton btn = child.GetComponent<SkillButton>();
+            if (btn != null) btn.UpdateState();
         }
     }
 
@@ -323,8 +302,39 @@ public class BattleSystem : MonoBehaviour
 
     bool CheckBattleOver()
     {
-        if (!enemyUnits.Any(e => e.currentHP > 0)) { state = BattleState.WON; BattlefieldManager.Instance.OnWaveCleared(); return true; }
-        if (playerUnit.currentHP <= 0) { state = BattleState.LOST; BattlefieldManager.Instance.OnPlayerDefeated(); return true; }
+        if (!enemyUnits.Any(e => e.currentHP > 0))
+        {
+            state = BattleState.WON;
+            if (BattlefieldManager.Instance != null) BattlefieldManager.Instance.OnBattleWon();
+            return true;
+        }
+        if (playerUnit.currentHP <= 0)
+        {
+            state = BattleState.LOST;
+            if (BattlefieldManager.Instance != null) BattlefieldManager.Instance.OnBattleLost();
+            return true;
+        }
         return false;
+    }
+
+    void EndBattle()
+    {
+        if (startBattleButton != null) startBattleButton.SetActive(false);
+    }
+
+    // --- HELPER FÜR HYBRID MAPPING ---
+    StatType GetOffensiveStatFor(DamageType dt)
+    {
+        switch (dt)
+        {
+            case DamageType.Fire: return StatType.FireDamage;
+            case DamageType.Ice: return StatType.IceDamage;
+            case DamageType.Lightning: return StatType.LightningDamage;
+            case DamageType.Poison: return StatType.PoisonDamage;
+            case DamageType.Arcane: return StatType.ArcaneDamage;
+            case DamageType.Holy: return StatType.HolyDamage;
+            case DamageType.Shadow: return StatType.ShadowDamage;
+            default: return StatType.PhysicalDamage;
+        }
     }
 }

@@ -17,15 +17,19 @@ MonoBehaviour:
   deathAnimationFrames: []
   attackRange: 1
   startingStats:
-  - type: 4
-    value: 200
-  - type: 6
-    value: 30
-  - type: 12
+  - type: 2
     value: 10
-  - type: 14
+  - type: 0
+    value: 100
+  - type: 3
+    value: 0
+  statsPerLevel:
+  - type: 0
+    value: 12
+  - type: 2
+    value: 3
+  - type: 3
     value: 2
-  statsPerLevel: []
   skills:
   - {fileID: 11400000, guid: 05c249e96aa71694491b1b0a5b0c7ae5, type: 2}
   - {fileID: 11400000, guid: b38b489b8b37dbf44bb0b4dfe2ba1b35, type: 2}

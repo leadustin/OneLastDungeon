@@ -10,7 +10,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: c0e3b7b6cc7790349ada9776b2eccc87, type: 3}
-  m_Name: GoblinMage
+  m_Name: GoblinMageBoss
   m_EditorClassIdentifier: Assembly-CSharp::EnemyTemplate
   enemyID: 1
   unitName: Goblin Mage
@@ -43,14 +43,14 @@ MonoBehaviour:
   - {fileID: -1520189836290183399, guid: ad0dc37a20d5d4543b1d41804506f9c1, type: 3}
   - {fileID: -4734674487293630000, guid: ad0dc37a20d5d4543b1d41804506f9c1, type: 3}
   - {fileID: 7327085890469779795, guid: ad0dc37a20d5d4543b1d41804506f9c1, type: 3}
-  rank: 0
+  rank: 2
   role: 2
   attackRange: 1
   stats:
   - type: 0
-    value: 50
+    value: 100
   - type: 2
-    value: 8
+    value: 12
   aiBehavior:
     aggression: 0
     skillFrequency: 0
@@ -65,5 +65,5 @@ MonoBehaviour:
     maxGold: 20
     possibleDrops: []
   designSummary: 
-  calc_DPS: 8
-  calc_EffectiveHealth: 50
+  calc_DPS: 12
+  calc_EffectiveHealth: 100

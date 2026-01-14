@@ -1,9 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-// WICHTIG: Die Structs (ItemDropConfig, LootConfig, AIConfig) wurden HIER GELÖSCHT.
-// Sie stehen jetzt zentral in GameEnums.cs.
-
 [CreateAssetMenu(fileName = "New Enemy", menuName = "RPG/Enemy Template")]
 public class EnemyTemplate : ScriptableObject
 {
@@ -49,11 +46,14 @@ public class EnemyTemplate : ScriptableObject
     private void CalculateDerivedStats()
     {
         // Einfache Vorschau-Berechnung für den Editor
-        float dmg = GetStatValue(StatType.Damage);
+        float dmg = GetStatValue(StatType.PhysicalDamage);
         float hp = GetStatValue(StatType.MaxHealth);
-        float def = GetStatValue(StatType.Defense);
 
-        calc_EffectiveHealth = hp * (1 + (def / 100f)); // Grobe Formel
+        // FIX: Defense -> Armor
+        float def = GetStatValue(StatType.Armor);
+
+        // Die Formel hier ist nur eine Näherung für den Editor
+        calc_EffectiveHealth = hp * (1 + (def / 100f));
         calc_DPS = dmg;
     }
 

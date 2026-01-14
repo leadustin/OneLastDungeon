@@ -21,14 +21,14 @@ public class BattlefieldManager : MonoBehaviour
     public BattleResultUI resultUI;
 
     // State
-    private int currentWaveIndex = 0;
     private BattleUnit activeHero;
-    private List<BattleUnit> activeEnemies = new List<BattleUnit>();
+    private readonly List<BattleUnit> activeEnemies = new();
 
-    // Session Kasse
+
+    // Session Kasse (Was haben wir in diesem Kampf gesammelt?)
     private int sessionGoldEarned = 0;
     private int sessionXPEarned = 0;
-    private List<DroppedItem> sessionItems = new List<DroppedItem>();
+    private readonly List<DroppedItem> sessionItems = new();
 
     void Awake()
     {
@@ -37,12 +37,14 @@ public class BattlefieldManager : MonoBehaviour
 
     void Start()
     {
+        // Prüfen, ob wir über den GameManager gekommen sind (Levelwahl)
         if (GameManager.Instance != null && GameManager.Instance.levelToLoad != null)
         {
             LoadLevel(GameManager.Instance.levelToLoad);
         }
         else if (currentLevel != null)
         {
+            // Fallback für Tests direkt aus der Szene
             LoadLevel(currentLevel);
         }
     }
@@ -50,138 +52,180 @@ public class BattlefieldManager : MonoBehaviour
     public void LoadLevel(LevelTemplate level)
     {
         currentLevel = level;
-        currentWaveIndex = 0;
 
-        // Reset Kasse
+        // Reset Session Loot
         sessionGoldEarned = 0;
         sessionXPEarned = 0;
         sessionItems.Clear();
 
+        // Hintergrund setzen
         if (backgroundRenderer != null && level.backgroundImage != null)
         {
             backgroundRenderer.sprite = level.backgroundImage;
         }
 
-        SpawnHeroIfNeeded();
-        StartNextWave();
+        SetupBattle();
     }
 
-    // --- HIER WURDE GEÄNDERT: LÄDT JETZT AUS PARTY MANAGER ---
-    void SpawnHeroIfNeeded()
+    void SetupBattle()
     {
-        // Sicherheitscheck: Haben wir überhaupt Party-Daten?
-        if (PartyManager.Instance == null || PartyManager.Instance.activeParty.Count == 0)
+        // 1. Helden spawnen (Leader)
+        if (PartyManager.Instance != null)
         {
-            Debug.LogWarning("Keine Party im PartyManager! (Stelle sicher, dass PartyManager in der Startszene ist)");
-            return;
-        }
-
-        // Alte Token löschen
-        foreach (var slot in playerSlots)
-        {
-            foreach (Transform child in slot) Destroy(child.gameObject);
-        }
-
-        activeHero = null;
-
-        // Wir spawnen (vereinfacht) nur den ersten Helden auf Slot 0
-        HeroRuntimeData heroData = PartyManager.Instance.activeParty[0];
-        Transform spawnSlot = playerSlots[0];
-
-        GameObject token = Instantiate(unitTokenPrefab, spawnSlot.position, Quaternion.identity);
-        token.transform.SetParent(spawnSlot);
-
-        BattleUnit unit = token.GetComponent<BattleUnit>();
-        if (unit != null)
-        {
-            // WICHTIG: Hier rufen wir die neue Setup-Methode auf
-            unit.SetupHeroFromRuntime(heroData);
-        }
-        activeHero = unit;
-    }
-
-    // ... (Der Rest bleibt gleich) ...
-    public void OnWaveCleared()
-    {
-        Debug.Log($"Welle {currentWaveIndex + 1} geschafft!");
-        currentWaveIndex++;
-
-        if (currentLevel != null && currentLevel.waves != null && currentWaveIndex < currentLevel.waves.Count)
-        {
-            StartNextWave();
+            var leaderData = PartyManager.Instance.GetLeader();
+            if (leaderData != null)
+            {
+                activeHero = SpawnHero(playerSlots[4], leaderData); // Mitte-Mitte
+            }
         }
         else
         {
-            Debug.Log(">>> LEVEL COMPLETED <<<");
-            if (resultUI != null)
-            {
-                int finalGold = sessionGoldEarned + currentLevel.goldReward;
-                int finalXP = sessionXPEarned + currentLevel.xpReward;
-                resultUI.ShowVictory(finalGold, finalXP, sessionItems);
-            }
+            // Fallback ohne PartyManager (Debug)
+            Debug.LogWarning("Kein PartyManager gefunden! Spawne Dummy Hero?");
         }
+
+        // 2. Gegner spawnen (Erste Welle)
+        SpawnWave();
     }
 
-    public void OnPlayerDefeated()
-    {
-        if (resultUI != null) resultUI.ShowDefeat();
-    }
-
-    void StartNextWave()
+    void SpawnWave()
     {
         ClearEnemies();
-        if (currentLevel == null || currentLevel.waves == null || currentWaveIndex >= currentLevel.waves.Count) return;
 
-        WaveDefinition wave = currentLevel.waves[currentWaveIndex];
-        foreach (var enemySetup in wave.enemies)
+        if (currentLevel != null && currentLevel.waves.Count > 0)
         {
-            int slotIdx = (int)enemySetup.position;
-            if (slotIdx < enemySlots.Count && enemySetup.enemyTemplate != null)
+            // Simpel: Wir nehmen immer die erste Welle für diesen Test
+            // Später: Wellen-Index hochzählen
+            var wave = currentLevel.waves[0];
+
+            foreach (var setup in wave.enemies)
             {
-                BattleUnit newEnemy = SpawnEnemy(enemySlots[slotIdx], enemySetup.enemyTemplate);
+                // Slot finden basierend auf GridPosition Enum
+                int slotIndex = (int)setup.position;
+                if (slotIndex >= enemySlots.Count) slotIndex = 0;
+
+                Transform targetSlot = enemySlots[slotIndex];
+                BattleUnit newEnemy = SpawnEnemy(targetSlot, setup.enemyTemplate);
                 activeEnemies.Add(newEnemy);
             }
         }
-        battleSystem.StartBattle(activeHero, activeEnemies);
+
+        // Kampf starten!
+        if (battleSystem != null && activeHero != null)
+        {
+            battleSystem.StartBattle(activeHero, activeEnemies);
+        }
     }
+
+    // --- SPAWN HELPER ---
+
+    BattleUnit SpawnHero(Transform slot, HeroRuntimeData data)
+    {
+        foreach (Transform child in slot)
+            Destroy(child.gameObject);
+
+        GameObject token = Instantiate(unitTokenPrefab, slot.position, Quaternion.identity);
+        token.transform.SetParent(slot);
+
+        if (token.TryGetComponent<BattleUnit>(out var unit))
+        {
+            unit.SetupHeroFromRuntime(data);
+        }
+
+        return unit;
+    }
+
+
+    BattleUnit SpawnEnemy(Transform slot, EnemyTemplate enemyData)
+    {
+        foreach (Transform child in slot)
+            Destroy(child.gameObject);
+
+        GameObject token = Instantiate(unitTokenPrefab, slot.position, Quaternion.identity);
+        token.transform.SetParent(slot);
+
+        if (token.TryGetComponent<BattleUnit>(out var unit))
+        {
+            unit.SetupEnemy(enemyData);
+        }
+
+        return unit;
+    }
+
+
+    void ClearEnemies()
+    {
+        foreach (var enemy in activeEnemies)
+        {
+            if (enemy != null) Destroy(enemy.gameObject);
+        }
+        activeEnemies.Clear();
+    }
+
+    // --- LOOT LOGIC ---
 
     public void AddLoot(int gold, int xp, List<DroppedItem> items)
     {
         sessionGoldEarned += gold;
         sessionXPEarned += xp;
+
         if (items != null)
         {
             foreach (var newItem in items)
             {
+                // Stapelbare Items zusammenfassen
                 var existing = sessionItems.Find(x => x.item == newItem.item);
-                if (existing != null) existing.amount += newItem.amount;
-                else sessionItems.Add(new DroppedItem { item = newItem.item, amount = newItem.amount });
+                if (existing != null)
+                {
+                    existing.amount += newItem.amount;
+                }
+                else
+                {
+                    sessionItems.Add(new DroppedItem { item = newItem.item, amount = newItem.amount });
+                }
             }
         }
     }
 
-    void ClearEnemies()
-    {
-        foreach (var enemy in activeEnemies) if (enemy != null) Destroy(enemy.gameObject);
-        activeEnemies.Clear();
-    }
-
-    BattleUnit SpawnEnemy(Transform slot, EnemyTemplate enemyData)
-    {
-        foreach (Transform child in slot) Destroy(child.gameObject);
-        GameObject token = Instantiate(unitTokenPrefab, slot.position, Quaternion.identity);
-        token.transform.SetParent(slot);
-        BattleUnit unit = token.GetComponent<BattleUnit>();
-        if (unit != null) unit.SetupEnemy(enemyData);
-        return unit;
-    }
+    // --- UI HELPER ---
 
     public void ToggleSlotVisuals(bool show)
     {
-        foreach (Transform slot in playerSlots)
+        // Optional: Zeige Kreise unter den Einheiten an/aus
+        // Hier erstmal leer lassen oder Visuals implementieren
+    }
+
+    // --- NEU: DIESE METHODEN FEHLTEN ---
+
+    public void OnBattleWon()
+    {
+        Debug.Log("Kampf gewonnen!");
+
+        // 1. Level als geschafft markieren im GameManager
+        if (GameManager.Instance != null && currentLevel != null)
         {
-            SpriteRenderer sr = slot.GetComponent<SpriteRenderer>();
-            if (sr != null) sr.enabled = show;
+            // Belohnung für Level-Abschluss (zusätzlich zum Loot?)
+            sessionGoldEarned += currentLevel.goldReward;
+            sessionXPEarned += currentLevel.xpReward;
+        }
+
+        // 2. UI anzeigen (und Loot übergeben)
+        if (resultUI != null)
+        {
+            resultUI.ShowVictory(sessionGoldEarned, sessionXPEarned, sessionItems);
+        }
+    }
+
+    public void OnBattleLost()
+    {
+        Debug.Log("Kampf verloren!");
+
+        // Bei Niederlage zeigen wir das UI an, aber ohne Loot (oder wenig)
+        if (resultUI != null)
+        {
+            // Wir rufen ShowVictory mit 0 auf. 
+            // TODO: Später eine ShowDefeat() Methode im UI bauen für roten Text "NIEDERLAGE"
+            resultUI.ShowVictory(0, 0, null);
         }
     }
 }

@@ -50,7 +50,6 @@ public class BattleUnit : MonoBehaviour
 
     private StatsHandler statsHandler;
     private UnitUI unitUI;
-    private HeroRuntimeData linkedHeroData;
 
     private void Awake()
     {
@@ -71,22 +70,26 @@ public class BattleUnit : MonoBehaviour
 
     public void SetupHeroFromRuntime(HeroRuntimeData data)
     {
-        linkedHeroData = data;
         unitName = data.heroName;
         currentLevel = data.currentLevel;
         isPlayerTeam = true;
 
-        maxHP = data.GetTotalStat(StatType.MaxHealth);
+        // RAW STATS laden
+        if (statsHandler != null)
+        {
+            statsHandler.SetBaseStat(StatType.MaxHealth, data.GetTotalStat(StatType.MaxHealth));
+            statsHandler.SetBaseStat(StatType.PhysicalDamage, data.GetTotalStat(StatType.PhysicalDamage));
+            // FIX: Defense -> Armor
+            statsHandler.SetBaseStat(StatType.Armor, data.GetTotalStat(StatType.Armor));
+
+            // Weitere Stats (Elementar Resistenzen etc. falls im RuntimeData vorhanden) laden...
+        }
+
+        // HP voll machen
+        maxHP = GetRawStat(StatType.MaxHealth);
         currentHP = maxHP;
 
         activeSkills = data.activeSkills;
-
-        if (statsHandler != null)
-        {
-            statsHandler.SetBaseStat(StatType.Damage, data.GetTotalStat(StatType.Damage));
-            statsHandler.SetBaseStat(StatType.Defense, data.GetTotalStat(StatType.Defense));
-        }
-
         SetupUI();
     }
 
@@ -95,29 +98,40 @@ public class BattleUnit : MonoBehaviour
         unitName = template.unitName;
         isPlayerTeam = false;
         attackRange = template.attackRange;
-
-        float damage = 0;
-        float defense = 0;
-
-        foreach (var stat in template.stats)
-        {
-            if (stat.type == StatType.MaxHealth) maxHP = stat.value;
-            if (stat.type == StatType.Damage) damage = stat.value;
-            if (stat.type == StatType.Defense) defense = stat.value;
-        }
-        currentHP = maxHP;
+        currentLevel = 1;
 
         if (statsHandler != null)
         {
-            statsHandler.SetBaseStat(StatType.Damage, damage);
-            statsHandler.SetBaseStat(StatType.Defense, defense);
+            foreach (var stat in template.stats)
+            {
+                statsHandler.SetBaseStat(stat.type, stat.value);
+            }
         }
 
+        maxHP = GetRawStat(StatType.MaxHealth);
+        currentHP = maxHP;
+
         activeSkills.Clear();
-        foreach (var skillTmpl in template.skills)
+
+        // --- FIX ANFANG ---
+        // 1. Prüfen, ob die Liste überhaupt existiert
+        if (template.skills != null)
         {
-            activeSkills.Add(new RuntimeSkill(skillTmpl));
+            foreach (var skillTmpl in template.skills)
+            {
+                // 2. WICHTIG: Prüfen, ob der Skill-Slot leer ist (None)
+                if (skillTmpl != null)
+                {
+                    activeSkills.Add(new RuntimeSkill(skillTmpl));
+                }
+                else
+                {
+                    // Optional: Warnung ausgeben, damit du den Fehler im Inspector findest
+                    Debug.LogWarning($"Gegner '{unitName}' hat einen leeren Skill-Slot! Bitte im Inspector fixen.");
+                }
+            }
         }
+        // --- FIX ENDE ---
 
         if (template.icon != null)
         {
@@ -125,8 +139,12 @@ public class BattleUnit : MonoBehaviour
             if (sr != null) sr.sprite = template.icon;
         }
 
-        goldDropAmount = Random.Range(template.rewards.minGold, template.rewards.maxGold);
-        xpDropAmount = template.rewards.xpReward;
+        // Safety Check für Rewards, falls diese im Template vergessen wurden
+        if (template.rewards.possibleDrops != null) // Nur als Vorsichtsmaßnahme
+        {
+            goldDropAmount = Random.Range(template.rewards.minGold, template.rewards.maxGold);
+            xpDropAmount = template.rewards.xpReward;
+        }
 
         SetupUI();
     }
@@ -140,83 +158,76 @@ public class BattleUnit : MonoBehaviour
         }
     }
 
-    // --- RUNDEN LOGIK (HIER WAR DER FEHLER) ---
+    // --- TURN LOGIC ---
 
-    // ÄNDERUNG: Rückgabetyp ist jetzt 'bool' (true = Stunned)
     public bool ProcessTurnStart()
     {
         bool isStunned = false;
-
-        // Status Effekte abarbeiten
         for (int i = activeEffects.Count - 1; i >= 0; i--)
         {
             var effect = activeEffects[i];
 
-            // Prüfen ob Betäubt
-            if (effect.type == StatusEffectType.Stun || effect.type == StatusEffectType.Freeze)
-            {
-                isStunned = true;
-            }
+            if (effect.type == StatusEffectType.Stun || effect.type == StatusEffectType.Freeze) isStunned = true;
 
-            // Schaden oder Heilung
             if (effect.type == StatusEffectType.Poison || effect.type == StatusEffectType.Burn)
             {
-                TakeDamage(effect.amount, HitType.Normal, effect.type);
+                // DoTs ignorieren oft Rüstung -> True Damage oder Magic Damage
+                // Wir nutzen hier Physical als Placeholder oder einen spezifischen DoT Typ
+                TakeDamageDirect(effect.amount, HitType.Normal, effect.type);
             }
             else if (effect.type == StatusEffectType.Regeneration)
             {
                 Heal(effect.amount);
             }
 
-            // Dauer reduzieren
             effect.remainingTurns--;
-            if (effect.remainingTurns <= 0)
-            {
-                activeEffects.RemoveAt(i);
-            }
+            if (effect.remainingTurns <= 0) activeEffects.RemoveAt(i);
         }
-
         return isStunned;
     }
 
     public void ReduceCooldowns()
     {
-        foreach (var skill in activeSkills)
-        {
-            skill.TickCooldown();
-        }
+        foreach (var skill in activeSkills) skill.TickCooldown();
     }
 
-    // --- KAMPF LOGIK ---
+    // --- KAMPF & CALCULATIONS ---
 
-    public bool TakeDamage(float dmg, HitType hitType, StatusEffectType statusSource = StatusEffectType.None, Sprite skillIcon = null)
+    // Aktualisierte TakeDamage Methode mit DamageType Support
+    public bool TakeDamage(float rawDmg, HitType hitType, int attackerLevel, DamageType damageType = DamageType.Physical)
     {
         if (currentHP <= 0) return true;
 
-        float defense = GetDefenseValue();
-        if (hitType != HitType.Critical && statusSource == StatusEffectType.None)
-        {
-            dmg = Mathf.Max(1, dmg - (defense * 0.5f));
-        }
+        // 1. Welche Resistenz brauchen wir? (Armor, FireResist, etc.)
+        StatType resistStat = CombatMath.GetResistanceStat(damageType);
 
+        // 2. Wie hoch ist der Wert dieser Resistenz bei mir?
+        float myResistValue = GetRawStat(resistStat);
+
+        // 3. Berechnung via Unified CombatMath
+        float finalDmg = CombatMath.CalculateFinalDamage(rawDmg, damageType, myResistValue, attackerLevel);
+
+        if (hitType == HitType.Critical) finalDmg *= 1.5f;
+
+        return TakeDamageDirect(finalDmg, hitType);
+    }
+
+    // Für True Damage oder interne Abzüge
+    private bool TakeDamageDirect(float finalDmg, HitType hitType, StatusEffectType source = StatusEffectType.None)
+    {
         if (hitType == HitType.Miss)
         {
             if (unitUI != null) unitUI.SpawnDamageText(0, HitType.Miss);
             return false;
         }
 
-        currentHP -= dmg;
-        if (currentHP <= 0)
-        {
-            currentHP = 0;
-            Die();
-            return true;
-        }
+        currentHP -= finalDmg;
+        if (currentHP <= 0) { currentHP = 0; Die(); return true; }
 
         if (unitUI != null)
         {
             unitUI.UpdateHealthBar(currentHP, maxHP, false);
-            unitUI.SpawnDamageText(dmg, hitType, statusSource, skillIcon);
+            unitUI.SpawnDamageText(finalDmg, hitType, source);
         }
         return false;
     }
@@ -245,14 +256,8 @@ public class BattleUnit : MonoBehaviour
 
         if (unitUI != null)
         {
-            if (unitUI.gameObject != this.gameObject)
-                unitUI.gameObject.SetActive(false);
-            else
-            {
-                unitUI.enabled = false;
-                var c = unitUI.GetComponent<Canvas>();
-                if (c) c.enabled = false;
-            }
+            if (unitUI.gameObject != this.gameObject) unitUI.gameObject.SetActive(false);
+            else { unitUI.enabled = false; var c = unitUI.GetComponent<Canvas>(); if (c) c.enabled = false; }
         }
 
         if (!isPlayerTeam && BattlefieldManager.Instance != null)
@@ -270,6 +275,8 @@ public class BattleUnit : MonoBehaviour
         gameObject.SetActive(false);
     }
 
-    public float GetDamageValue() => statsHandler != null ? statsHandler.GetStatValue(StatType.Damage) : 10;
-    public float GetDefenseValue() => statsHandler != null ? statsHandler.GetStatValue(StatType.Defense) : 0;
+    // --- GETTER (Raw Stats) ---
+    public float GetRawStat(StatType type) => statsHandler != null ? statsHandler.GetStatValue(type) : 0;
+
+    public float GetDamageValue() => GetRawStat(StatType.PhysicalDamage);
 }
