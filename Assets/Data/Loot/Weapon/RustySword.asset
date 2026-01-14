@@ -33,4 +33,8 @@ MonoBehaviour:
     min: 1
     max: 2
     chance: 1
+  - stat: 7
+    min: 1
+    max: 2
+    chance: 1
   grantedSkill: {fileID: 0}

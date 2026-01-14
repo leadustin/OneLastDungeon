@@ -1,5 +1,6 @@
 using UnityEngine;
 using System.Collections.Generic;
+using System.Linq;
 
 // --- HILFSKLASSEN ---
 [System.Serializable]
@@ -33,11 +34,29 @@ public class BattleUnit : MonoBehaviour
     public bool isPlayerTeam;
     public int currentLevel = 1;
 
+    [Header("Identifikation (Neu)")]
+    // -1 = Einzigartig, 0-4 = Hat einen Form-Marker (Kreis, Viereck...)
+    public int markerIndex = -1;
+
     public float currentHP;
     public float maxHP;
 
+    // --- ATB & LIMIT SYSTEM ---
+    [Header("ATB System")]
+    public float currentATB = 0f;
+    public float maxATB = 100f;
+    public float speed = 10f;
+
+    [Header("Limit Break")]
+    public float limitGauge = 0f;
+    public float maxLimit = 100f;
+    public bool isLimitReady => limitGauge >= maxLimit;
+
     public AttackRange attackRange;
     public UnitVisuals Visuals { get; private set; }
+
+    [Header("Visuals Configuration")]
+    [SerializeField] private SpriteRenderer iconRenderer;
 
     [Header("Loot")]
     public int xpDropAmount;
@@ -61,11 +80,22 @@ public class BattleUnit : MonoBehaviour
     public void Initialize(bool isPlayer)
     {
         isPlayerTeam = isPlayer;
+        currentATB = Random.Range(0, 20);
+        limitGauge = 0;
+        markerIndex = -1; // Reset
+
         foreach (var skill in activeSkills)
         {
             if (skill.template != null)
                 skill.currentCooldown = skill.template.initialTurnDelay;
         }
+        UpdateStatsCache();
+    }
+
+    public void UpdateStatsCache()
+    {
+        maxHP = GetRawStat(StatType.MaxHealth);
+        speed = Mathf.Max(1f, GetRawStat(StatType.Speed));
     }
 
     public void SetupHeroFromRuntime(HeroRuntimeData data)
@@ -74,22 +104,28 @@ public class BattleUnit : MonoBehaviour
         currentLevel = data.currentLevel;
         isPlayerTeam = true;
 
-        // RAW STATS laden
         if (statsHandler != null)
         {
             statsHandler.SetBaseStat(StatType.MaxHealth, data.GetTotalStat(StatType.MaxHealth));
             statsHandler.SetBaseStat(StatType.PhysicalDamage, data.GetTotalStat(StatType.PhysicalDamage));
-            // FIX: Defense -> Armor
             statsHandler.SetBaseStat(StatType.Armor, data.GetTotalStat(StatType.Armor));
-
-            // Weitere Stats (Elementar Resistenzen etc. falls im RuntimeData vorhanden) laden...
+            statsHandler.SetBaseStat(StatType.Speed, data.GetTotalStat(StatType.Speed));
         }
 
-        // HP voll machen
-        maxHP = GetRawStat(StatType.MaxHealth);
-        currentHP = maxHP;
-
         activeSkills = data.activeSkills;
+
+        if (data.heroTemplate != null && data.heroTemplate.classIcon != null)
+        {
+            var sr = GetIconRenderer();
+            if (sr != null)
+            {
+                sr.sprite = data.heroTemplate.classIcon;
+                sr.color = Color.white;
+            }
+        }
+
+        UpdateStatsCache();
+        currentHP = maxHP;
         SetupUI();
     }
 
@@ -103,51 +139,62 @@ public class BattleUnit : MonoBehaviour
         if (statsHandler != null)
         {
             foreach (var stat in template.stats)
-            {
                 statsHandler.SetBaseStat(stat.type, stat.value);
-            }
         }
-
-        maxHP = GetRawStat(StatType.MaxHealth);
-        currentHP = maxHP;
 
         activeSkills.Clear();
-
-        // --- FIX ANFANG ---
-        // 1. Prüfen, ob die Liste überhaupt existiert
         if (template.skills != null)
         {
-            foreach (var skillTmpl in template.skills)
-            {
-                // 2. WICHTIG: Prüfen, ob der Skill-Slot leer ist (None)
-                if (skillTmpl != null)
-                {
-                    activeSkills.Add(new RuntimeSkill(skillTmpl));
-                }
-                else
-                {
-                    // Optional: Warnung ausgeben, damit du den Fehler im Inspector findest
-                    Debug.LogWarning($"Gegner '{unitName}' hat einen leeren Skill-Slot! Bitte im Inspector fixen.");
-                }
-            }
+            foreach (var s in template.skills)
+                if (s != null) activeSkills.Add(new RuntimeSkill(s));
         }
-        // --- FIX ENDE ---
 
         if (template.icon != null)
         {
-            var sr = GetComponentInChildren<SpriteRenderer>();
-            if (sr != null) sr.sprite = template.icon;
+            var sr = GetIconRenderer();
+            if (sr != null) { sr.sprite = template.icon; sr.color = Color.white; }
         }
 
-        // Safety Check für Rewards, falls diese im Template vergessen wurden
-        if (template.rewards.possibleDrops != null) // Nur als Vorsichtsmaßnahme
+        if (template.rewards.possibleDrops != null)
         {
             goldDropAmount = Random.Range(template.rewards.minGold, template.rewards.maxGold);
             xpDropAmount = template.rewards.xpReward;
         }
 
+        UpdateStatsCache();
+        currentHP = maxHP;
         SetupUI();
     }
+
+    // --- VISUAL HELPER ---
+
+    private SpriteRenderer GetIconRenderer()
+    {
+        if (iconRenderer != null) return iconRenderer;
+        var children = GetComponentsInChildren<Transform>(true);
+        foreach (var t in children)
+        {
+            if (t.name == "Character_Icon")
+            {
+                var sr = t.GetComponent<SpriteRenderer>();
+                if (sr != null) { iconRenderer = sr; return sr; }
+            }
+        }
+        return GetComponentInChildren<SpriteRenderer>();
+    }
+
+    // --- DIESE METHODE HAT GEFEHLT (Fix für CS1061) ---
+    public Sprite GetIcon()
+    {
+        // 1. Haben wir ein manuell zugewiesenes Icon (Priorität)?
+        if (iconRenderer != null) return iconRenderer.sprite;
+
+        // 2. Fallback: Visuals Renderer (Das Sprite, das auf dem Feld rumläuft)
+        if (Visuals != null && Visuals.unitRenderer != null) return Visuals.unitRenderer.sprite;
+
+        return null;
+    }
+    // --------------------------------------------------
 
     void SetupUI()
     {
@@ -158,21 +205,38 @@ public class BattleUnit : MonoBehaviour
         }
     }
 
-    // --- TURN LOGIC ---
+    // --- TURN LOGIC (ATB) ---
 
-    public bool ProcessTurnStart()
+    public void TickATB(float deltaTime)
     {
-        bool isStunned = false;
+        if (currentHP <= 0) { currentATB = 0; return; }
+
+        if (currentATB < maxATB)
+        {
+            currentATB += speed * deltaTime;
+            if (currentATB > maxATB) currentATB = maxATB;
+        }
+    }
+
+    public void ResetATB()
+    {
+        currentATB = 0;
+    }
+
+    public void OnTurnStart()
+    {
+        ReduceCooldowns();
+        ProcessStatusEffects();
+    }
+
+    private void ProcessStatusEffects()
+    {
         for (int i = activeEffects.Count - 1; i >= 0; i--)
         {
             var effect = activeEffects[i];
 
-            if (effect.type == StatusEffectType.Stun || effect.type == StatusEffectType.Freeze) isStunned = true;
-
             if (effect.type == StatusEffectType.Poison || effect.type == StatusEffectType.Burn)
             {
-                // DoTs ignorieren oft Rüstung -> True Damage oder Magic Damage
-                // Wir nutzen hier Physical als Placeholder oder einen spezifischen DoT Typ
                 TakeDamageDirect(effect.amount, HitType.Normal, effect.type);
             }
             else if (effect.type == StatusEffectType.Regeneration)
@@ -183,7 +247,6 @@ public class BattleUnit : MonoBehaviour
             effect.remainingTurns--;
             if (effect.remainingTurns <= 0) activeEffects.RemoveAt(i);
         }
-        return isStunned;
     }
 
     public void ReduceCooldowns()
@@ -191,28 +254,25 @@ public class BattleUnit : MonoBehaviour
         foreach (var skill in activeSkills) skill.TickCooldown();
     }
 
-    // --- KAMPF & CALCULATIONS ---
+    // --- KAMPF ---
 
-    // Aktualisierte TakeDamage Methode mit DamageType Support
     public bool TakeDamage(float rawDmg, HitType hitType, int attackerLevel, DamageType damageType = DamageType.Physical)
     {
         if (currentHP <= 0) return true;
 
-        // 1. Welche Resistenz brauchen wir? (Armor, FireResist, etc.)
         StatType resistStat = CombatMath.GetResistanceStat(damageType);
-
-        // 2. Wie hoch ist der Wert dieser Resistenz bei mir?
         float myResistValue = GetRawStat(resistStat);
-
-        // 3. Berechnung via Unified CombatMath
         float finalDmg = CombatMath.CalculateFinalDamage(rawDmg, damageType, myResistValue, attackerLevel);
 
         if (hitType == HitType.Critical) finalDmg *= 1.5f;
 
+        float pctLost = finalDmg / maxHP;
+        limitGauge += pctLost * 100f * 0.5f;
+        if (limitGauge > maxLimit) limitGauge = maxLimit;
+
         return TakeDamageDirect(finalDmg, hitType);
     }
 
-    // Für True Damage oder interne Abzüge
     private bool TakeDamageDirect(float finalDmg, HitType hitType, StatusEffectType source = StatusEffectType.None)
     {
         if (hitType == HitType.Miss)
@@ -236,21 +296,14 @@ public class BattleUnit : MonoBehaviour
     {
         currentHP += amount;
         if (currentHP > maxHP) currentHP = maxHP;
-
-        if (unitUI != null)
-        {
-            unitUI.UpdateHealthBar(currentHP, maxHP, false);
-            unitUI.SpawnDamageText(amount, HitType.Heal);
-        }
+        if (unitUI != null) { unitUI.UpdateHealthBar(currentHP, maxHP, false); unitUI.SpawnDamageText(amount, HitType.Heal); }
     }
 
-    public void ApplyEffect(SkillEffectConfig config)
-    {
-        activeEffects.Add(new ActiveStatusEffect(config));
-    }
+    public void ApplyEffect(SkillEffectConfig config) => activeEffects.Add(new ActiveStatusEffect(config));
 
     private void Die()
     {
+        currentATB = 0;
         Collider2D col = GetComponent<Collider2D>();
         if (col != null) col.enabled = false;
 
@@ -275,8 +328,6 @@ public class BattleUnit : MonoBehaviour
         gameObject.SetActive(false);
     }
 
-    // --- GETTER (Raw Stats) ---
     public float GetRawStat(StatType type) => statsHandler != null ? statsHandler.GetStatValue(type) : 0;
-
     public float GetDamageValue() => GetRawStat(StatType.PhysicalDamage);
 }

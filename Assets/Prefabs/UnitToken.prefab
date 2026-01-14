@@ -71,6 +71,7 @@ MonoBehaviour:
   animator: {fileID: 0}
   moveSpeed: 20
   scalePunch: 1.2
+  deathFrameDuration: 0.08
 --- !u!114 &8708125034511605033
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -89,6 +90,9 @@ MonoBehaviour:
   currentHP: 0
   maxHP: 0
   attackRange: 0
+  xpDropAmount: 0
+  goldDropAmount: 0
+  itemDrops: []
   activeSkills: []
   activeEffects: []
 --- !u!114 &3138814606946588985
@@ -106,7 +110,14 @@ MonoBehaviour:
   damageTextPrefab: {fileID: 4729950340131725149, guid: 9f7ffdb7bbf96e643a14ee11d05993c1, type: 3}
   damageTextSpawnPoint: {fileID: 4720624706248104833}
   healthBarFill: {fileID: 4221385055162076623}
-  barChangeSpeed: 5
+  healthText: {fileID: 0}
+  nameText: {fileID: 0}
+  statusConfigs:
+  - type: 1
+    prefixText: 'Brennen '
+    color: {r: 1, g: 0.6470588, b: 0, a: 1}
+    fontOverride: {fileID: 0}
+    defaultIcon: {fileID: 0}
   hitConfigs:
   - type: 0
     color: {r: 1, g: 1, b: 1, a: 1}
@@ -124,12 +135,6 @@ MonoBehaviour:
     color: {r: 0, g: 0.7490196, b: 1, a: 1}
     sizeMult: 1
     textOverride: 
-  statusConfigs:
-  - type: 1
-    prefixText: 'Brennen '
-    color: {r: 1, g: 0.6470588, b: 0, a: 1}
-    fontOverride: {fileID: 0}
-    defaultIcon: {fileID: 0}
 --- !u!61 &6056685738112067750
 BoxCollider2D:
   m_ObjectHideFlags: 0

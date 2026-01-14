@@ -7,6 +7,10 @@ public class UnitVisuals : MonoBehaviour
     public SpriteRenderer unitRenderer;
     public Animator animator;
 
+    [Header("Highlight")]
+    public Material highlightMaterial; // Ein Material mit "Sprite Outline" oder heller Shader
+    private Material defaultMaterial;
+
     [Header("Einstellungen")]
     public float moveSpeed = 10f;
     public float scalePunch = 1.2f;
@@ -47,6 +51,31 @@ public class UnitVisuals : MonoBehaviour
         if (unitRenderer != null)
         {
             unitRenderer.flipX = !facingRight;
+        }
+    }
+
+    public void ToggleHighlight(bool active)
+    {
+        if (unitRenderer == null) return;
+
+        if (active)
+        {
+            // Option A: Farbe aufhellen / rötlich färben
+            unitRenderer.color = Color.Lerp(originalColor, Color.yellow, 0.5f);
+
+            // Option B: Pulsieren (StartCoroutine für Sine-Wave Scale)
+            // StartCoroutine(PulseRoutine());
+
+            // Option C: Marker-Objekt über Kopf aktivieren (z.B. Pfeil)
+            // if(selectionArrow != null) selectionArrow.SetActive(true);
+        }
+        else
+        {
+            // Reset
+            unitRenderer.color = originalColor;
+            transform.localScale = originalScale;
+            // StopAllCoroutines();
+            // if(selectionArrow != null) selectionArrow.SetActive(false);
         }
     }
 

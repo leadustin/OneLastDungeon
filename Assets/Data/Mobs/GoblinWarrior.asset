@@ -24,6 +24,8 @@ MonoBehaviour:
     value: 60
   - type: 2
     value: 5
+  - type: 5
+    value: 9
   aiBehavior:
     aggression: 0
     skillFrequency: 0

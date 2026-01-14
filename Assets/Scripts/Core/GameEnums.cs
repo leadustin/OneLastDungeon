@@ -81,7 +81,6 @@ public enum UnitRank { Normal, Elite, Boss }
 
 public enum UnitRole { Tank, GlassCannon, Support, Debuffer, Balanced }
 
-// NEU: Schadensarten für das Unified System
 public enum DamageType
 {
     Physical,
@@ -101,14 +100,13 @@ public enum StatType
     MaxMana,
 
     // --- OFFENSIV (PHYSISCH) ---
-    PhysicalDamage,   // Ehemals "Damage". Das ist der Basis-Schwert-Schaden.
+    PhysicalDamage,
     CritChance,
     CritDamage,
     Speed,
     Accuracy,
 
-    // --- OFFENSIV (ELEMENTAR - BONUS) ---
-    // Das hat dir gefehlt! Jetzt kannst du es auf Items auswählen.
+    // --- OFFENSIV (ELEMENTAR) ---
     FireDamage,
     IceDamage,
     LightningDamage,
@@ -117,9 +115,9 @@ public enum StatType
     HolyDamage,
     ShadowDamage,
 
-    // --- DEFENSIV (Unified System) ---
-    Armor,            // Hilft gegen PhysicalDamage
-    FireResist,       // Hilft gegen FireDamage
+    // --- DEFENSIV ---
+    Armor,
+    FireResist,
     IceResist,
     LightningResist,
     PoisonResist,
@@ -156,7 +154,13 @@ public enum GridPosition
     None = 99
 }
 
+// --- HIER WAR DER FEHLER ---
 public enum SkillTargetMode
 {
-    SingleEnemy, AllEnemies, Self, Ally, RandomEnemy
+    SingleEnemy,
+    AllEnemies,
+    Self,
+    SingleAlly, // War vorher 'Ally'
+    AllAllies,  // Fehlte komplett
+    RandomEnemy
 }
